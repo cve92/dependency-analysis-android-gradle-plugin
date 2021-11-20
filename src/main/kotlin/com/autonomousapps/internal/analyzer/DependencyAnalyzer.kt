@@ -58,9 +58,13 @@ internal interface DependencyAnalyzer {
 
   fun registerManifestPackageExtractionTask(): TaskProvider<ManifestPackageExtractionTask>? = null
 
+  fun registerManifestComponentsExtractionTask(): TaskProvider<ManifestComponentsExtractionTask>? = null
+
   fun registerAndroidResToSourceAnalysisTask(
     manifestPackageExtractionTask: TaskProvider<ManifestPackageExtractionTask>
   ): TaskProvider<AndroidResToSourceAnalysisTask>? = null
+
+  fun registerFindAndroidResTask(): TaskProvider<FindAndroidResImportsTask>? = null
 
   fun registerAndroidResToResAnalysisTask(): TaskProvider<AndroidResToResToResAnalysisTask>? = null
 
@@ -68,14 +72,22 @@ internal interface DependencyAnalyzer {
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
   ): TaskProvider<FindNativeLibsTask>? = null
 
+  fun registerFindNativeLibsTask2(): TaskProvider<FindNativeLibsTask>? = null
+
   fun registerFindAndroidLintersTask(
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
   ): TaskProvider<FindAndroidLinters>? = null
 
+  fun registerFindAndroidLintersTask2(): TaskProvider<FindAndroidLinters2>? = null
+
   fun registerFindDeclaredProcsTask(
-    inMemoryCacheProvider: Provider<InMemoryCache>,
+    inMemoryCache: Provider<InMemoryCache>,
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
   ): TaskProvider<FindDeclaredProcsTask>
+
+  fun registerFindDeclaredProcsTask(
+    inMemoryCache: Provider<InMemoryCache>
+  ): TaskProvider<FindDeclaredProcsTask2>
 
   fun registerFindUnusedProcsTask(
     findDeclaredProcs: TaskProvider<FindDeclaredProcsTask>,

@@ -2,10 +2,9 @@ package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.ANNOTATION_PROCESSOR_PATH
-import com.autonomousapps.internal.Location
 import com.autonomousapps.internal.SERVICE_LOADER_PATH
-import com.autonomousapps.internal.ServiceLoader
 import com.autonomousapps.internal.utils.*
+import com.autonomousapps.model.ServiceLoaderDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ArtifactCollection
 import org.gradle.api.artifacts.result.ResolvedArtifactResult
@@ -22,15 +21,18 @@ import java.util.zip.ZipFile
  * bytecode. We will special-case all such dependencies discovered on the classpath.
  */
 @CacheableTask
-abstract class FindServiceLoadersTask : DefaultTask() {
+abstract class FindServiceLoadersTask2 : DefaultTask() {
 
   init {
     group = TASK_GROUP_DEP_INTERNAL
     description = "Produces a report of all dependencies that include Java ServiceLoaders"
   }
 
-  @get:Internal
-  lateinit var artifacts: ArtifactCollection
+  private lateinit var artifacts: ArtifactCollection
+
+  fun setServiceLoaders(artifacts: ArtifactCollection) {
+    this.artifacts = artifacts
+  }
 
   /**
    * Unused, except as a task input for Gradle.
@@ -38,18 +40,13 @@ abstract class FindServiceLoadersTask : DefaultTask() {
   @Classpath
   fun getDependencies(): FileCollection = artifacts.artifactFiles
 
-  @get:PathSensitive(PathSensitivity.NONE)
-  @get:InputFile
-  abstract val locations: RegularFileProperty
-
   @get:OutputFile
   abstract val output: RegularFileProperty
 
-  private val candidates by lazy { locations.fromJsonSet<Location>() }
-
   @TaskAction fun action() {
     val outputFile = output.getAndDelete()
-    val serviceLoaders: Set<ServiceLoader> = artifacts
+
+    val serviceLoaders = artifacts
       .filterNonGradle()
       .filter { it.file.name.endsWith(".jar") }
       .flatMapToSet { findServiceLoaders(it) }
@@ -60,7 +57,7 @@ abstract class FindServiceLoadersTask : DefaultTask() {
   // E.g. org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.5 -->
   // 1. META-INF/services/kotlinx.coroutines.internal.MainDispatcherFactory
   // 2. META-INF/services/kotlinx.coroutines.CoroutineExceptionHandler
-  private fun findServiceLoaders(artifact: ResolvedArtifactResult): Set<ServiceLoader> {
+  private fun findServiceLoaders(artifact: ResolvedArtifactResult): Set<ServiceLoaderDependency> {
     val zip = ZipFile(artifact.file)
 
     return zip.entries().toList()
@@ -75,11 +72,10 @@ abstract class FindServiceLoadersTask : DefaultTask() {
           // Ignore comments
           .filterToSet { !it.startsWith("#") }
 
-        ServiceLoader(
+        ServiceLoaderDependency(
           providerFile = serviceFile.name.removePrefix(SERVICE_LOADER_PATH),
           providerClasses = providerClasses,
-          componentIdentifier = artifact.id.componentIdentifier,
-          candidates = candidates
+          componentIdentifier = artifact.id.componentIdentifier
         )
       }
   }

@@ -19,6 +19,11 @@ internal fun ArtifactCollection.filterNonGradle(): List<ResolvedArtifactResult> 
   it.id.componentIdentifier is OpaqueComponentIdentifier
 }
 
+internal fun Sequence<ResolvedArtifactResult>.filterNonGradle() = filterNot {
+  // e.g. "Gradle API", "Gradle TestKit", "Gradle Kotlin DSL"
+  it.id.componentIdentifier is OpaqueComponentIdentifier
+}
+
 /**
  * Transforms a [ZipFile] into a collection of [ZipEntry]s, which contains only class files (and not
  * the module-info.class file).
@@ -33,6 +38,12 @@ internal fun ZipFile.asClassFiles(): Set<ZipEntry> {
  */
 internal fun Iterable<ZipEntry>.filterToSetOfClassFiles(): Set<ZipEntry> {
   return filterToSet {
+    it.name.endsWith(".class") && it.name != "module-info.class"
+  }
+}
+
+internal fun Iterable<ZipEntry>.asSequenceOfClassFiles(): Sequence<ZipEntry> {
+  return asSequence().filter {
     it.name.endsWith(".class") && it.name != "module-info.class"
   }
 }

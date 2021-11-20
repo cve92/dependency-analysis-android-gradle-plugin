@@ -1,12 +1,8 @@
 package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
-import com.autonomousapps.internal.Location
-import com.autonomousapps.internal.NativeLibDependency
-import com.autonomousapps.internal.utils.fromJsonSet
-import com.autonomousapps.internal.utils.getAndDelete
-import com.autonomousapps.internal.utils.mapToSet
-import com.autonomousapps.internal.utils.toJson
+import com.autonomousapps.internal.utils.*
+import com.autonomousapps.model.NativeLibDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection
@@ -15,7 +11,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.*
 
 @CacheableTask
-abstract class FindNativeLibsTask : DefaultTask() {
+abstract class FindNativeLibsTask2 : DefaultTask() {
 
   init {
     group = TASK_GROUP_DEP_INTERNAL
@@ -32,10 +28,6 @@ abstract class FindNativeLibsTask : DefaultTask() {
   @InputFiles
   fun getAndroidJniFiles(): FileCollection = androidJni.artifactFiles
 
-  @get:PathSensitive(PathSensitivity.NONE)
-  @get:InputFile
-  abstract val locations: RegularFileProperty
-
   @get:OutputFile
   abstract val output: RegularFileProperty
 
@@ -43,13 +35,11 @@ abstract class FindNativeLibsTask : DefaultTask() {
     val outputFile = output.getAndDelete()
 
     val nativeLibs = getAndroidJniFiles().asFileTree.files.mapToSet { it.name }
-    val candidates = locations.fromJsonSet<Location>()
 
-    val artifacts = androidJni.mapNotNull {
+    val artifacts = androidJni.mapNotNullToOrderedSet {
       try {
         NativeLibDependency(
-          componentIdentifier = it.id.componentIdentifier,
-          candidates = candidates,
+          coordinates = it.id.componentIdentifier.toCoordinates(),
           fileNames = nativeLibs
         )
       } catch (e: GradleException) {

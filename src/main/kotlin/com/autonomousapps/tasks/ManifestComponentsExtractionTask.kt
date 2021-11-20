@@ -3,20 +3,20 @@
 package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
-import com.autonomousapps.internal.Manifest
 import com.autonomousapps.internal.ManifestParser
-import com.autonomousapps.internal.utils.*
+import com.autonomousapps.internal.utils.getAndDelete
+import com.autonomousapps.internal.utils.mapNotNullToOrderedSet
+import com.autonomousapps.internal.utils.toJson
+import com.autonomousapps.model.AndroidManifestDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection
 import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.*
-import org.w3c.dom.Document
-import java.io.File
 
 @CacheableTask
-abstract class ManifestPackageExtractionTask : DefaultTask() {
+abstract class ManifestComponentsExtractionTask : DefaultTask() {
 
   init {
     group = TASK_GROUP_DEP_INTERNAL
@@ -41,10 +41,10 @@ abstract class ManifestPackageExtractionTask : DefaultTask() {
 
     val parser = ManifestParser()
 
-    val manifests: Set<Manifest> = manifestArtifacts.mapNotNullToOrderedSet { manifest ->
+    val manifests: Set<AndroidManifestDependency> = manifestArtifacts.mapNotNullToOrderedSet { manifest ->
       try {
         val parseResult = parser.parse(manifest.file)
-        Manifest(
+        AndroidManifestDependency(
           packageName = parseResult.packageName,
           componentMap = parseResult.components,
           componentIdentifier = manifest.id.componentIdentifier
@@ -57,3 +57,4 @@ abstract class ManifestPackageExtractionTask : DefaultTask() {
     outputFile.writeText(manifests.toJson())
   }
 }
+

@@ -2,10 +2,11 @@
 
 package com.autonomousapps.internal.utils
 
-import com.squareup.moshi.FromJson
-import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.ToJson
+import com.autonomousapps.model.Coordinates
+import com.autonomousapps.model.FlatCoordinates
+import com.autonomousapps.model.ModuleCoordinates
+import com.autonomousapps.model.ProjectCoordinates
+import com.squareup.moshi.*
 import com.squareup.moshi.Types.newParameterizedType
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.io.File
@@ -13,6 +14,7 @@ import java.io.File
 val MOSHI: Moshi by lazy {
   Moshi.Builder()
     .add(DependencyGraphAdapter())
+    .add(CoordinatesAdapter())
     .add(KotlinJsonAdapterFactory())
     .add(TypeAdapters())
     .build()
@@ -95,9 +97,63 @@ inline fun <reified K, reified V> Map<K, V>.toPrettyString(withNulls: Boolean = 
   return getJsonMapAdapter<K, V>(withNulls).indent("  ").toJson(this)
 }
 
-@Suppress("unused", "HasPlatformType")
+@Suppress("unused")
 internal class TypeAdapters {
 
-  @ToJson fun fileToJson(file: File) = file.absolutePath
-  @FromJson fun fileFromJson(absolutePath: String) = File(absolutePath)
+  @ToJson fun fileToJson(file: File): String = file.absolutePath
+  @FromJson fun fileFromJson(absolutePath: String): File = File(absolutePath)
+}
+
+@Suppress("unused")
+internal class CoordinatesAdapter {
+
+  @ToJson fun fromCoordinates(
+    writer: JsonWriter,
+    coordinates: Coordinates,
+    projectDelegate: JsonAdapter<ProjectCoordinates>,
+    moduleDelegate: JsonAdapter<ModuleCoordinates>,
+    flatDelegate: JsonAdapter<FlatCoordinates>
+  ): Unit = when (coordinates) {
+    is ProjectCoordinates -> projectDelegate.toJson(writer, coordinates)
+    is ModuleCoordinates -> moduleDelegate.toJson(writer, coordinates)
+    is FlatCoordinates -> flatDelegate.toJson(writer, coordinates)
+  }
+
+  @FromJson fun toCoordinates(
+    reader: JsonReader,
+    projectDelegate: JsonAdapter<ProjectCoordinates>,
+    moduleDelegate: JsonAdapter<ModuleCoordinates>,
+    flatDelegate: JsonAdapter<FlatCoordinates>
+  ): Coordinates =
+    tryFromModule(reader, moduleDelegate)
+      ?: tryFromProject(reader, projectDelegate)
+      ?: tryFromFlat(reader, flatDelegate)
+      ?: error("FromJson toCoordinates shouldn't be able to fail.")
+
+  private fun tryFromModule(
+    reader: JsonReader,
+    moduleDelegate: JsonAdapter<ModuleCoordinates>
+  ): ModuleCoordinates? = try {
+    moduleDelegate.fromJson(reader)
+  } catch (_: Exception) {
+    null
+  }
+
+  private fun tryFromProject(
+    reader: JsonReader,
+    projectDelegate: JsonAdapter<ProjectCoordinates>
+  ): ProjectCoordinates? = try {
+    projectDelegate.fromJson(reader)
+  } catch (_: Exception) {
+    null
+  }
+
+  private fun tryFromFlat(
+    reader: JsonReader,
+    flatDelegate: JsonAdapter<FlatCoordinates>
+  ): FlatCoordinates? = try {
+    flatDelegate.fromJson(reader)
+  } catch (_: Exception) {
+    null
+  }
 }

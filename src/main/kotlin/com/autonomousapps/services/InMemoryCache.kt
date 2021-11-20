@@ -5,6 +5,8 @@ package com.autonomousapps.services
 import com.autonomousapps.FLAG_MAX_CACHE_SIZE
 import com.autonomousapps.internal.AnalyzedJar
 import com.autonomousapps.internal.AnnotationProcessor
+import com.autonomousapps.model.AnnotationProcessorDependency
+import com.autonomousapps.model.ExplodingJar
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import org.gradle.api.GradleException
@@ -49,15 +51,21 @@ abstract class InMemoryCache : BuildService<BuildServiceParameters.None> {
   }
 
   private val analyzedJars: Cache<String, AnalyzedJar> = newCache()
+  private val explodingJars: Cache<String, ExplodingJar> = newCache()
   private val constantMembers: Cache<String, Set<String>> = newCache()
   private val inlineMembers: Cache<String, List<String>> = newCache()
   private val procs: Cache<String, AnnotationProcessor> = newCache()
+  private val procs2: Cache<String, AnnotationProcessorDependency> = newCache()
 
+  // TODO remove
   internal fun analyzedJar(name: String): AnalyzedJar? = analyzedJars.asMap()[name]
-
   internal fun analyzedJars(name: String, analyzedJar: AnalyzedJar) {
     analyzedJars.asMap().putIfAbsent(name, analyzedJar)
+  }
 
+  internal fun explodedJar(name: String): ExplodingJar? = explodingJars.asMap()[name]
+  internal fun explodedJars(name: String, explodingJar: ExplodingJar) {
+    explodingJars.asMap().putIfAbsent(name, explodingJar)
   }
 
   fun constantMember(identifier: String): Set<String>? = constantMembers.asMap()[identifier]
@@ -73,9 +81,13 @@ abstract class InMemoryCache : BuildService<BuildServiceParameters.None> {
   }
 
   fun proc(procName: String): AnnotationProcessor? = procs.asMap()[procName]
-
   fun procs(procName: String, proc: AnnotationProcessor) {
     procs.asMap().putIfAbsent(procName, proc)
+  }
+
+  internal fun proc2(procName: String): AnnotationProcessorDependency? = procs2.asMap()[procName]
+  internal fun procs2(procName: String, proc: AnnotationProcessorDependency) {
+    procs2.asMap().putIfAbsent(procName, proc)
   }
 
   companion object {

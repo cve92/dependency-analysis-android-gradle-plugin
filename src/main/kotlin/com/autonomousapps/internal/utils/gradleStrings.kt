@@ -1,5 +1,9 @@
 package com.autonomousapps.internal.utils
 
+import com.autonomousapps.model.Coordinates
+import com.autonomousapps.model.FlatCoordinates
+import com.autonomousapps.model.ModuleCoordinates
+import com.autonomousapps.model.ProjectCoordinates
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.*
 import org.gradle.api.artifacts.component.ComponentIdentifier
@@ -10,6 +14,22 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.ConfigurableFileTree
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier
 import org.gradle.internal.component.local.model.OpaqueComponentIdentifier
+
+/**
+ * Converts this [ComponentIdentifier] to group-artifact-version (GAV) coordinates in a tuple of (GA, V?).
+ */
+internal fun ComponentIdentifier.toCoordinates(): Coordinates {
+  val identifier = toIdentifier()
+  return when (this) {
+    is ProjectComponentIdentifier -> ProjectCoordinates(identifier)
+    is ModuleComponentIdentifier -> {
+      resolvedVersion()?.let { resolvedVersion ->
+        ModuleCoordinates(identifier, resolvedVersion)
+      } ?: FlatCoordinates(identifier)
+    }
+    else -> FlatCoordinates(identifier)
+  }
+}
 
 /**
  * Convert this [ComponentIdentifier] to a group-artifact identifier, such as "org.jetbrains.kotlin:kotlin-stdlib" in

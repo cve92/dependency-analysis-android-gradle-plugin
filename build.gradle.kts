@@ -77,6 +77,12 @@ dependencies {
   implementation("com.github.ben-manes.caffeine:caffeine:3.0.4") {
     because("High performance, concurrent cache")
   }
+  implementation("com.google.guava:guava:31.0.1-jre") {
+    because("Graphs")
+  }
+  implementation("commons-io:commons-io:2.11.0") {
+    because("For FileUtils.deleteDirectory()")
+  }
   implementation(files("libs/asm-$asmVersion.jar"))
   implementation(files("libs/antlr-$internalAntlrVersion.jar"))
 
@@ -119,9 +125,9 @@ dependencies {
   testImplementation("com.google.truth:truth:1.1.3")
 
   functionalTestImplementation(project(":testkit"))
-  functionalTestImplementation("commons-io:commons-io:2.11.0") {
-    because("For FileUtils.deleteDirectory()")
-  }
+//  functionalTestImplementation("commons-io:commons-io:2.11.0") {
+//    because("For FileUtils.deleteDirectory()")
+//  }
 }
 
 tasks.jar {

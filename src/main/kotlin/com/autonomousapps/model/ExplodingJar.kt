@@ -1,5 +1,8 @@
-package com.autonomousapps.internal
+package com.autonomousapps.model
 
+import com.autonomousapps.internal.Access
+import com.autonomousapps.internal.AnalyzedClass
+import com.autonomousapps.internal.KtFile
 import com.autonomousapps.internal.utils.mapToOrderedSet
 import com.autonomousapps.internal.utils.reallyAll
 import java.lang.annotation.RetentionPolicy
@@ -25,11 +28,8 @@ import java.lang.annotation.RetentionPolicy
  * The algorithm for [isLintJar] is that the jar must meet these conditions:
  * 1. It must contain no classes (`analyzedClasses` is empty) AND
  * 2. It must contain an Android lint registry.
- * // TODO what about things like providing native libs, or only Android resources, or...?
- *
- * TODO unit tests for this class
  */
-internal class AnalyzedJar(
+internal class ExplodingJar(
   analyzedClasses: Set<AnalyzedClass>,
   val ktFiles: List<KtFile>,
   val androidLintRegistry: String?
@@ -107,7 +107,10 @@ internal class AnalyzedJar(
       .filter { analyzedClass.innerClasses.contains(it.className) }
       .reallyAll { isCompileOnlyAnnotation(it) }
 
-  private fun isOuterClassCompileOnlyAnnotation(analyzedClass: AnalyzedClass, analyzedClasses: Set<AnalyzedClass>): Boolean =
+  private fun isOuterClassCompileOnlyAnnotation(
+    analyzedClass: AnalyzedClass,
+    analyzedClasses: Set<AnalyzedClass>
+  ): Boolean =
     analyzedClasses
       .filter { analyzedClass.outerClassName == it.className }
       .reallyAll { isCompileOnlyAnnotation(it) }

@@ -81,10 +81,11 @@ internal abstract class JvmAnalyzer(
     }
 
   final override fun registerFindDeclaredProcsTask(
-    inMemoryCacheProvider: Provider<InMemoryCache>,
+    inMemoryCache: Provider<InMemoryCache>,
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
   ): TaskProvider<FindDeclaredProcsTask> {
     return project.tasks.register<FindDeclaredProcsTask>("findDeclaredProcs$variantNameCapitalized") {
+      inMemoryCacheProvider.set(inMemoryCache)
       kaptConf()?.let {
         setKaptArtifacts(it.incoming.artifacts)
       }
@@ -95,8 +96,23 @@ internal abstract class JvmAnalyzer(
 
       output.set(outputPaths.declaredProcPath)
       outputPretty.set(outputPaths.declaredProcPrettyPath)
+    }
+  }
 
-      this.inMemoryCacheProvider.set(inMemoryCacheProvider)
+  final override fun registerFindDeclaredProcsTask(
+    inMemoryCache: Provider<InMemoryCache>
+  ): TaskProvider<FindDeclaredProcsTask2> {
+    return project.tasks.register<FindDeclaredProcsTask2>("findDeclaredProcs$variantNameCapitalized") {
+      inMemoryCacheProvider.set(inMemoryCache)
+      kaptConf()?.let {
+        setKaptArtifacts(it.incoming.artifacts)
+      }
+      annotationProcessorConf()?.let {
+        setAnnotationProcessorArtifacts(it.incoming.artifacts)
+      }
+
+      output.set(outputPaths.declaredProcPath)
+      outputPretty.set(outputPaths.declaredProcPrettyPath)
     }
   }
 
