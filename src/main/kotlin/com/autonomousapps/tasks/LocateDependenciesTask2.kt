@@ -60,14 +60,7 @@ abstract class LocateDependenciesTask2 : DefaultTask() {
 
   @TaskAction fun action() {
     val outputFile = output.getAndDelete()
-
     val locations = Locator(locationContainer.get()).locations()
-
-    // TODO debug: delete
-    locations.forEach {
-      logger.lifecycle(it.toString())
-    }
-
     outputFile.writeText(locations.toJson())
   }
 }

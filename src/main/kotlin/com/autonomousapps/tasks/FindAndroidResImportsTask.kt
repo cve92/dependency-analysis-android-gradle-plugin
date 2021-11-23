@@ -7,7 +7,7 @@ import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.mapNotNullToSet
 import com.autonomousapps.internal.utils.toCoordinates
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.Res
+import com.autonomousapps.model.AndroidRes
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection
@@ -67,14 +67,14 @@ abstract class FindAndroidResImportsTask : DefaultTask() {
     outputFile.writeText(androidRes.toJson())
   }
 
-  private fun doThing(artifacts: ArtifactCollection): Set<Res> {
+  private fun doThing(artifacts: ArtifactCollection): Set<AndroidRes> {
     return artifacts.mapNotNullToSet { resArtifact ->
       try {
         // TODO this could be more efficient. It opens the file twice
         val import = extractResImportFromResFile(resArtifact.file)
         val lines = extractLinesFromRes(resArtifact.file)
         if (import != null) {
-          Res(
+          AndroidRes(
             coordinates = resArtifact.id.componentIdentifier.toCoordinates(),
             import = import,
             lines = lines
@@ -93,7 +93,7 @@ abstract class FindAndroidResImportsTask : DefaultTask() {
     return "$pn.R"
   }
 
-  private fun extractLinesFromRes(producerRes: File): List<Res.Line> {
+  private fun extractLinesFromRes(producerRes: File): List<AndroidRes.Line> {
     return producerRes.useLines { strings ->
       strings
         .mapNotNull { line ->
@@ -101,7 +101,7 @@ abstract class FindAndroidResImportsTask : DefaultTask() {
           // element is the res type (such as "drawable") and the second element is the ID (filename).
           val split = line.split(' ')
           if (split.size == 2) {
-            Res.Line(split[0], split[1])
+            AndroidRes.Line(split[0], split[1])
           } else {
             null
           }

@@ -2,46 +2,24 @@
 
 package com.autonomousapps.internal.utils
 
-import com.autonomousapps.model.*
+import com.autonomousapps.model.Coordinates
+import com.autonomousapps.model.DependencyGraphView
+import com.autonomousapps.model.GraphKind
+import com.google.common.graph.Graph
 import com.squareup.moshi.FromJson
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.ToJson
 import com.squareup.moshi.Types.newParameterizedType
-import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import dev.zacsweers.moshix.sealed.reflect.MetadataMoshiSealedJsonAdapterFactory
 import java.io.File
 
 val MOSHI: Moshi by lazy {
   Moshi.Builder()
     .add(DependencyGraphAdapter())
-    .add(
-      PolymorphicJsonAdapterFactory.of(Coordinates::class.java, "coord")
-        .withSubtype(ModuleCoordinates::class.java, "module_coord")
-        .withSubtype(ProjectCoordinates::class.java, "project_coord")
-        .withSubtype(FlatCoordinates::class.java, "flat_coord")
-    )
-    .add(
-      PolymorphicJsonAdapterFactory.of(Dependency::class.java, "dep")
-        .withSubtype(ModuleDependency::class.java, "module_dep")
-        .withSubtype(ProjectDependency::class.java, "project_dep")
-        .withSubtype(FlatDependency::class.java, "flat_dep")
-    )
-    .add(
-      PolymorphicJsonAdapterFactory.of(Capability::class.java, "cap")
-        .withSubtype(AndroidLinterCapability::class.java, "lint_cap")
-        .withSubtype(AndroidManifestCapability::class.java, "man_cap")
-        .withSubtype(AndroidResCapability::class.java, "res_cap")
-        .withSubtype(AnnotationProcessorCapability::class.java, "proc_cap")
-        .withSubtype(ClassCapability::class.java, "class_cap")
-        .withSubtype(ConstantCapability::class.java, "const_cap")
-        .withSubtype(InferredCapability::class.java, "infer_cap")
-        .withSubtype(InlineMemberCapability::class.java, "inline_cap")
-        .withSubtype(KtFileCapability::class.java, "kt_cap")
-        .withSubtype(NativeLibCapability::class.java, "nat_cap")
-        .withSubtype(ServiceLoaderCapability::class.java, "service_cap")
-        .withSubtype(SecurityProviderCapability::class.java, "prov_cap")
-    )
+    .add(GraphViewAdapter())
+    .add(MetadataMoshiSealedJsonAdapterFactory())
     .add(TypeAdapters())
     .addLast(KotlinJsonAdapterFactory())
     .build()
@@ -129,4 +107,46 @@ internal class TypeAdapters {
 
   @ToJson fun fileToJson(file: File): String = file.absolutePath
   @FromJson fun fileFromJson(absolutePath: String): File = File(absolutePath)
+}
+
+@Suppress("unused", "UnstableApiUsage")
+internal class GraphViewAdapter {
+
+  @ToJson fun graphViewToJson(graphView: DependencyGraphView): GraphViewJson {
+    return GraphViewJson(
+      name = graphView.name,
+      kind = graphView.kind,
+      nodes = graphView.graph.nodes(),
+      edges = graphView.graph.edges().asSequence().map { pair ->
+        pair.nodeU() to pair.nodeV()
+      }.toSet()
+    )
+  }
+
+  @FromJson fun jsonToGraphView(json: GraphViewJson): DependencyGraphView {
+    return DependencyGraphView(
+      name = json.name,
+      kind = json.kind,
+      graph = jsonToGraph(json)
+    )
+  }
+
+  private fun jsonToGraph(json: GraphViewJson): Graph<Coordinates> {
+    val graphBuilder = DependencyGraphView.newGraphBuilder()
+    json.nodes.forEach { graphBuilder.addNode(it) }
+    json.edges.forEach { (source, target) -> graphBuilder.putEdge(source, target) }
+
+    return graphBuilder.build()
+  }
+
+  internal data class GraphViewJson(
+    val name: String,
+    val kind: GraphKind,
+    val nodes: Set<Coordinates>,
+    val edges: Set<EdgeJson>
+  )
+
+  internal data class EdgeJson(val source: Coordinates, val target: Coordinates)
+
+  private infix fun Coordinates.to(target: Coordinates) = EdgeJson(this, target)
 }

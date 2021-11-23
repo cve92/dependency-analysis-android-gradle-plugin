@@ -397,13 +397,13 @@ internal class ProjectPlugin(private val project: Project) {
     }
 
     /*
-     * Find all capabilities.
+     * Producers. Find the capabilities of all the producers (dependencies).
      */
 
     // A report of all dependencies that supply Android linters on the compile classpath.
     val androidLintTask = dependencyAnalyzer.registerFindAndroidLintersTask2()
 
-    // Explodes jars to expose their secrets.
+    // Explode jars to expose their secrets.
     val explodeJarTask = tasks.register<ExplodeJarTask>("explodeJar$variantTaskName") {
       inMemoryCache.set(inMemoryCacheProvider)
       setCompileClasspath(
@@ -467,22 +467,30 @@ internal class ProjectPlugin(private val project: Project) {
     tasks.register<GraphViewTask>("graphView$variantTaskName") {
       setCompileClasspath(configurations[dependencyAnalyzer.compileConfigurationName])
       jarAttr.set(dependencyAnalyzer.attributeValueJar)
+      variant.set(variantName)
+      output.set(outputPaths.compileGraphPath)
       outputDot.set(outputPaths.compileGraphDotPath)
     }
 
-    // TODO FINISH PRODUCER SIDE BY CREATING A GRAPH WITH SERIALIZABLE FINAL-PUBLIC-DEPENDENCY REPRESENTATION
-    // TODO THEN BASICALLY RE-DO THE CONSUMER SIDE BY USING GRAPH ANALYSIS INSTEAD OF WHAT WENT BEFORE
-
     /*
-     * Consumer.
+     * Consumer. Start with introspection: what can we say about this project itself?
      */
 
+    // TODO BASICALLY RE-DO THE CONSUMER SIDE BY USING GRAPH ANALYSIS INSTEAD OF WHAT WENT BEFORE
+
+    // Produces a report that lists all import declarations in the source of the current project.
+    val importFinderTask = tasks.register<ImportFinderTask>("importFinder$variantTaskName") {
+      dependencyAnalyzer.javaSourceFiles?.let { javaSourceFiles.setFrom(it) }
+      kotlinSourceFiles.setFrom(dependencyAnalyzer.kotlinSourceFiles)
+      importsReport.set(outputPaths.importsPath)
+    }
+
     // Produces a report that lists all dependencies that contributed constants used by the current project.
-//    val constantTask = tasks.register<ConstantsFinderTask>("constantUsageDetector$variantTaskName") {
-//      inMemoryCacheProvider.set(this@ProjectPlugin.inMemoryCacheProvider)
-//      components.set(analyzeJarTask.flatMap { it.allComponentsReport })
-//      output.set(outputPaths.constantUsagePath)
-//    }
+    // val constantTask = tasks.register<ConstantsFinderTask>("constantUsageDetector$variantTaskName") {
+    //   // inMemoryCacheProvider.set(this@ProjectPlugin.inMemoryCacheProvider)
+    //   // components.set(analyzeJarTask.flatMap { it.allComponentsReport })
+    //   // output.set(outputPaths.constantUsagePath)
+    // }
 
     // Produces a report that list all of the dependencies that contribute types determined to be used based on the
     // presence of associated import statements. One example caught only by this task: consumer project uses
@@ -495,14 +503,9 @@ internal class ProjectPlugin(private val project: Project) {
 //      output.set(outputPaths.generalUsagePath)
 //    }
 
-    // Produces a report that lists all import declarations in the source of the current project.
-    val importFinderTask = tasks.register<ImportFinderTask>("importFinder$variantTaskName") {
-      dependencyAnalyzer.javaSourceFiles?.let { javaSourceFiles.setFrom(it) }
-      kotlinSourceFiles.setFrom(dependencyAnalyzer.kotlinSourceFiles)
-      importsReport.set(outputPaths.importsPath)
-    }
-
-
+    /*
+     * Producers -> Consumer. Bring it all together. How does this project (consumer) use its dependencies (producers)?
+     */
   }
 
   /**
@@ -637,7 +640,8 @@ internal class ProjectPlugin(private val project: Project) {
     }
 
     // A report of unused annotation processors
-    val declaredProcsTask = dependencyAnalyzer.registerFindDeclaredProcsTask(inMemoryCacheProvider, locateDependencies)
+    val declaredProcsTask =
+      dependencyAnalyzer.registerFindDeclaredProcsTask(inMemoryCacheProvider, locateDependencies)
     val unusedProcsTask = dependencyAnalyzer.registerFindUnusedProcsTask(declaredProcsTask, importFinderTask)
 
     // A report of whether kotlin-kapt is redundant
@@ -645,7 +649,9 @@ internal class ProjectPlugin(private val project: Project) {
       kapt.set(providers.provider { plugins.hasPlugin("kotlin-kapt") })
       declaredProcs.set(declaredProcsTask.flatMap { it.output })
       unusedProcs.set(unusedProcsTask.flatMap { it.output })
-      redundantPluginsBehavior.set(getExtension().issueHandler.redundantPluginsIssueFor(this@analyzeDependencies1.path))
+      redundantPluginsBehavior.set(
+        getExtension().issueHandler.redundantPluginsIssueFor(this@analyzeDependencies1.path)
+      )
 
       output.set(outputPaths.pluginKaptAdvicePath)
     }

@@ -118,9 +118,8 @@ abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenc
     val annotationProcessors = parameters.annotationProcessors.fromJsonSet<AnnotationProcessorDependency>()
     // Android-specific and therefore optional
     val manifestComponents = parameters.manifestComponents.fromNullableJsonSet<AndroidManifestDependency>().orEmpty()
-    val androidRes = parameters.androidRes.fromNullableJsonSet<Res>().orEmpty()
+    val androidRes = parameters.androidRes.fromNullableJsonSet<AndroidRes>().orEmpty()
     val nativeLibs = parameters.nativeLibs.fromNullableJsonSet<NativeLibDependency>().orEmpty()
-
 
     physicalArtifacts.forEach { artifact ->
       builders.merge(
@@ -129,13 +128,13 @@ abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenc
         DependencyBuilder::concat
       )
     }
-    merge(explodedJars) { it.toCapabilities() }
-    merge(inlineMembers) { listOf(it.toCapability()) }
-    merge(serviceLoaders) { listOf(it.toCapability()) }
-    merge(annotationProcessors) { listOf(it.toCapability()) }
-    merge(manifestComponents) { listOf(AndroidManifestCapability(it.packageName, it.componentMap)) }
-    merge(androidRes) { listOf(it.toCapability()) }
-    merge(nativeLibs) { listOf(it.toCapability()) }
+    merge(explodedJars)
+    merge(inlineMembers)
+    merge(serviceLoaders)
+    merge(annotationProcessors)
+    merge(manifestComponents)
+    merge(androidRes)
+    merge(nativeLibs)
 
     // Write every dependency to its own file in the output directory
     builders.values.asSequence()
@@ -145,14 +144,11 @@ abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenc
       }
   }
 
-  private fun <T : HasCoordinates> merge(
-    dependencies: Set<T>,
-    newCapabilities: (T) -> List<Capability>
-  ) {
+  private fun <T : DependencyView<T>> merge(dependencies: Set<T>) {
     dependencies.forEach {
       builders.merge(
         it.coordinates,
-        DependencyBuilder(it.coordinates).apply { capabilities.addAll(newCapabilities(it)) },
+        DependencyBuilder(it.coordinates).apply { capabilities.addAll(it.toCapabilities()) },
         DependencyBuilder::concat
       )
     }
@@ -181,6 +177,3 @@ private class DependencyBuilder(val coordinates: Coordinates) {
     }
   }
 }
-
-// TODO I'll need this reading files too
-private fun Coordinates.toFileName() = toString().replace(":", "__") + ".json"

@@ -4,24 +4,27 @@ import com.autonomousapps.internal.KtFile
 import com.autonomousapps.internal.utils.ifNotEmpty
 import com.autonomousapps.internal.utils.toCoordinates
 import org.gradle.api.artifacts.component.ComponentIdentifier
-import java.io.File
 
-internal interface HasCoordinates {
+internal interface DependencyView<T> : Comparable<T> where T : DependencyView<T> {
   val coordinates: Coordinates
+  fun toCapabilities(): List<Capability>
+
+  override fun compareTo(other: T): Int = coordinates.compareTo(other.coordinates)
 }
 
 /**
  * A dependency that includes a lint jar. (Which is maybe always named lint.jar?)
  *
  * Example registry: `nl.littlerobots.rxlint.RxIssueRegistry`.
+ *
+ * nb: Deliberate does not implement [DependencyView]. For various reasons, this information gets embedded in
+ * [ExplodedJar], which is the preferred access point for deeper analysis.
  */
 internal data class AndroidLinterDependency(
-  override val coordinates: Coordinates,
+  val coordinates: Coordinates,
   val lintRegistry: String
-) : Comparable<AndroidLinterDependency>, HasCoordinates {
-  override fun compareTo(other: AndroidLinterDependency): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+) : Comparable<AndroidLinterDependency> {
+  override fun compareTo(other: AndroidLinterDependency): Int = coordinates.compareTo(other.coordinates)
 }
 
 /**
@@ -33,7 +36,7 @@ internal data class AndroidManifestDependency(
   val packageName: String,
   /** A map of component type to components. */
   val componentMap: Map<String, Set<String>>
-) : Comparable<AndroidManifestDependency>, HasCoordinates {
+) : DependencyView<AndroidManifestDependency> {
 
   constructor(
     packageName: String,
@@ -45,9 +48,7 @@ internal data class AndroidManifestDependency(
     coordinates = componentIdentifier.toCoordinates()
   )
 
-  override fun compareTo(other: AndroidManifestDependency): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+  override fun toCapabilities(): List<Capability> = listOf(AndroidManifestCapability(packageName, componentMap))
 
   enum class Component(val tagName: String, val mapKey: String) {
     ACTIVITY("activity", "activities"),
@@ -67,11 +68,23 @@ internal data class AndroidManifestDependency(
   }
 }
 
+data class AndroidRes(
+  override val coordinates: Coordinates,
+  /** An import that indicates a possible use of an Android resource from this dependency. */
+  val import: String,
+  val lines: List<Line>
+) : DependencyView<AndroidRes> {
+
+  override fun toCapabilities(): List<Capability> = listOf(AndroidResCapability(import, lines))
+
+  data class Line(val type: String, val value: String)
+}
+
 internal data class AnnotationProcessorDependency(
   override val coordinates: Coordinates,
   val processor: String,
   val supportedAnnotationTypes: Set<String>
-) : Comparable<AnnotationProcessorDependency>, HasCoordinates {
+) : DependencyView<AnnotationProcessorDependency> {
 
   constructor(
     processor: String,
@@ -82,57 +95,32 @@ internal data class AnnotationProcessorDependency(
     coordinates = componentIdentifier.toCoordinates()
   )
 
-  override fun compareTo(other: AnnotationProcessorDependency): Int = coordinates.compareTo(other.coordinates)
-
-  fun toCapability() = AnnotationProcessorCapability(processor, supportedAnnotationTypes)
+  override fun toCapabilities(): List<Capability> = listOf(
+    AnnotationProcessorCapability(processor, supportedAnnotationTypes)
+  )
 }
 
 internal data class InlineMemberDependency(
   override val coordinates: Coordinates,
   val inlineMembers: Set<String>
-) : Comparable<InlineMemberDependency>, HasCoordinates {
+) : DependencyView<InlineMemberDependency> {
 
-  override fun compareTo(other: InlineMemberDependency): Int = coordinates.compareTo(other.coordinates)
-
-  fun toCapability() = InlineMemberCapability(inlineMembers)
+  override fun toCapabilities(): List<Capability> = listOf(InlineMemberCapability(inlineMembers))
 }
 
 internal data class NativeLibDependency(
   override val coordinates: Coordinates,
   val fileNames: Set<String>
-) : Comparable<NativeLibDependency>, HasCoordinates {
+) : DependencyView<NativeLibDependency> {
 
-  override fun compareTo(other: NativeLibDependency): Int = coordinates.compareTo(other.coordinates)
-
-  fun toCapability() = NativeLibCapability(fileNames)
-}
-
-internal data class PhysicalArtifact(
-  override val coordinates: Coordinates,
-  /** Physical artifact on disk; a jar file. */
-  val file: File
-) : Comparable<PhysicalArtifact>, HasCoordinates {
-
-  override fun compareTo(other: PhysicalArtifact): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
-
-  companion object {
-    internal fun of(
-      componentIdentifier: ComponentIdentifier,
-      file: File,
-    ) = PhysicalArtifact(
-      coordinates = componentIdentifier.toCoordinates(),
-      file = file
-    )
-  }
+  override fun toCapabilities(): List<Capability> = listOf(NativeLibCapability(fileNames))
 }
 
 internal data class ServiceLoaderDependency(
   override val coordinates: Coordinates,
   val providerFile: String,
   val providerClasses: Set<String>
-) : Comparable<ServiceLoaderDependency>, HasCoordinates {
+) : DependencyView<ServiceLoaderDependency> {
 
   constructor(
     providerFile: String,
@@ -144,9 +132,7 @@ internal data class ServiceLoaderDependency(
     coordinates = componentIdentifier.toCoordinates()
   )
 
-  override fun compareTo(other: ServiceLoaderDependency): Int = coordinates.compareTo(other.coordinates)
-
-  fun toCapability() = ServiceLoaderCapability(providerFile, providerClasses)
+  override fun toCapabilities(): List<Capability> = listOf(ServiceLoaderCapability(providerFile, providerClasses))
 }
 
 /**
@@ -189,7 +175,7 @@ internal data class ExplodedJar(
    * All of the "Kt" files within this component.
    */
   val ktFiles: List<KtFile>
-) : Comparable<ExplodedJar>, HasCoordinates {
+) : DependencyView<ExplodedJar> {
 
   internal constructor(
     artifact: PhysicalArtifact,
@@ -211,9 +197,7 @@ internal data class ExplodedJar(
     }
   }
 
-  override fun compareTo(other: ExplodedJar): Int = coordinates.compareTo(other.coordinates)
-
-  fun toCapabilities(): List<Capability> {
+  override fun toCapabilities(): List<Capability> {
     val capabilities = mutableListOf<Capability>()
     capabilities += InferredCapability(isCompileOnlyAnnotations = isCompileOnlyAnnotations)
     classes.ifNotEmpty { capabilities += ClassCapability(it) }
@@ -223,28 +207,4 @@ internal data class ExplodedJar(
     androidLintRegistry?.let { capabilities += AndroidLinterCapability(it, isLintJar) }
     return capabilities
   }
-}
-
-data class Res(
-  override val coordinates: Coordinates,
-  /** An import that indicates a possible use of an Android resource from this dependency. */
-  val import: String,
-  val lines: List<Line>
-) : Comparable<Res>, HasCoordinates {
-
-  constructor(
-    componentIdentifier: ComponentIdentifier,
-    import: String,
-    lines: List<Line>
-  ) : this(
-    coordinates = componentIdentifier.toCoordinates(),
-    import = import,
-    lines = lines
-  )
-
-  override fun compareTo(other: Res): Int = coordinates.compareTo(other.coordinates)
-
-  fun toCapability() = AndroidResCapability(import, lines)
-
-  data class Line(val type: String, val value: String)
 }

@@ -14,7 +14,7 @@ internal class CoordinatesTest {
 
     val serialized = linterDependency.toJson()
     assertThat(serialized).isEqualTo(
-      """[{"coordinates":{"coord":"project_coord","identifier":":app"},"lintRegistry":"fooRegistry"}]"""
+      """[{"coordinates":{"type":"project","identifier":":app"},"lintRegistry":"fooRegistry"}]"""
     )
 
     val deserialized = serialized.fromJsonSet<AndroidLinterDependency>()
@@ -28,7 +28,7 @@ internal class CoordinatesTest {
 
     val serialized = linterDependency.toJson()
     assertThat(serialized).isEqualTo(
-      """[{"coordinates":{"coord":"module_coord","identifier":"magic:app","resolvedVersion":"1.0"},"lintRegistry":"fooRegistry"}]"""
+      """[{"coordinates":{"type":"module","identifier":"magic:app","resolvedVersion":"1.0"},"lintRegistry":"fooRegistry"}]"""
     )
 
     val deserialized = serialized.fromJsonSet<AndroidLinterDependency>()
@@ -42,7 +42,7 @@ internal class CoordinatesTest {
 
     val serialized = linterDependency.toJson()
     assertThat(serialized).isEqualTo(
-      """[{"coordinates":{"coord":"flat_coord","identifier":"Gradle API"},"lintRegistry":"fooRegistry"}]"""
+      """[{"coordinates":{"type":"flat","identifier":"Gradle API"},"lintRegistry":"fooRegistry"}]"""
     )
 
     val deserialized = serialized.fromJsonSet<AndroidLinterDependency>()

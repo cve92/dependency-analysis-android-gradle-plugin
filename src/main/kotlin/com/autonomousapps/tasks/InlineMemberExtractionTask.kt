@@ -107,7 +107,7 @@ abstract class InlineMemberExtractionWorkAction : WorkAction<InlineMemberExtract
 
   private fun List<Imports>.kotlinImports(): Set<String>? = find {
     it.sourceType == SourceType.KOTLIN
-  }?.imports
+  }?.imports?.flatMapTo(LinkedHashSet()) { it.value }
 }
 
 internal class InlineDependenciesFinder(

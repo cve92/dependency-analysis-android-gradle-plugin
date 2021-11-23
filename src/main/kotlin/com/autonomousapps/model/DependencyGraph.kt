@@ -1,7 +1,7 @@
 package com.autonomousapps.model
 
 class DependencyGraph(
-  val views: List<DependencyGraphView>
+  val views: Map<String, DependencyGraphView>
 ) {
 
 }

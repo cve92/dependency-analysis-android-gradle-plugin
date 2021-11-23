@@ -71,6 +71,12 @@ dependencies {
   implementation("com.squareup.moshi:moshi-adapters:1.12.0") {
     because("For writing reports based on Kotlin classes")
   }
+  implementation("dev.zacsweers.moshix:moshi-sealed-runtime:0.14.1") {
+    because("Better support for de/serializing sealed types")
+  }
+  implementation("dev.zacsweers.moshix:moshi-sealed-metadata-reflect:0.14.1") {
+    because("Better support for de/serializing sealed types")
+  }
   implementation("org.jetbrains.kotlin:kotlin-reflect") {
     because("For Kotlin ABI analysis")
   }
@@ -82,9 +88,6 @@ dependencies {
   }
   implementation("com.google.guava:guava:31.0.1-jre") {
     because("Graphs")
-  }
-  implementation("commons-io:commons-io:2.11.0") {
-    because("For FileUtils.deleteDirectory()")
   }
   implementation(files("libs/asm-$asmVersion.jar"))
   implementation(files("libs/antlr-$internalAntlrVersion.jar"))
@@ -128,9 +131,9 @@ dependencies {
   testImplementation("com.google.truth:truth:1.1.3")
 
   functionalTestImplementation(project(":testkit"))
-//  functionalTestImplementation("commons-io:commons-io:2.11.0") {
-//    because("For FileUtils.deleteDirectory()")
-//  }
+  functionalTestImplementation("commons-io:commons-io:2.11.0") {
+    because("For FileUtils.deleteDirectory()")
+  }
 }
 
 tasks.jar {

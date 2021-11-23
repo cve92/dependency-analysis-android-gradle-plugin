@@ -2,20 +2,21 @@ package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.artifactsFor
+import com.autonomousapps.internal.isJavaPlatform
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.mapNotNullToSet
 import com.autonomousapps.internal.utils.toCoordinates
+import com.autonomousapps.internal.utils.toJson
 import com.autonomousapps.model.Coordinates
+import com.autonomousapps.model.DependencyGraphView
+import com.autonomousapps.model.GraphKind
 import com.autonomousapps.model.ProjectCoordinates
 import com.google.common.graph.Graph
-import com.google.common.graph.GraphBuilder
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.FileCollectionDependency
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
-import org.gradle.api.attributes.Attribute
-import org.gradle.api.attributes.Category
 import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -48,14 +49,29 @@ abstract class GraphViewTask @Inject constructor(
     .artifactsFor(jarAttr.get())
     .artifactFiles
 
+  @get:Input
+  abstract val variant: Property<String>
+
+  /** Output in json format. */
+  @get:OutputFile
+  abstract val output: RegularFileProperty
+
+  /** Output in graphviz format. */
   @get:OutputFile
   abstract val outputDot: RegularFileProperty
 
   @TaskAction fun action() {
+    val output = output.getAndDelete()
     val outputDot = outputDot.getAndDelete()
 
     val graph = GraphViewBuilder(compileClasspath).graph
+    val graphView = DependencyGraphView(
+      name = variant.get(),
+      kind = GraphKind.COMPILE_TIME,
+      graph = graph
+    )
 
+    output.writeText(graphView.toJson())
     outputDot.writeText(GraphWriter.toDot(graph))
   }
 }
@@ -68,9 +84,7 @@ private class GraphViewBuilder(conf: Configuration) {
 
   val graph: Graph<Coordinates>
 
-  private val graphBuilder = GraphBuilder.directed()
-    .allowsSelfLoops(false)
-    .immutable<Coordinates>()
+  private val graphBuilder = DependencyGraphView.newGraphBuilder()
 
   private val visited = mutableSetOf<Coordinates>()
 
@@ -126,21 +140,6 @@ private class GraphViewBuilder(conf: Configuration) {
   }
 }
 
-/**
- * Returns true if any of the variants are a kind of platform.
- * TODO this is duplicated in DependencyMisuseTask.
- */
-private fun ResolvedDependencyResult.isJavaPlatform(): Boolean = selected.variants.any { variant ->
-  val category = variant.attributes.getAttribute(CATEGORY)
-  category == Category.REGULAR_PLATFORM || category == Category.ENFORCED_PLATFORM
-}
-
-/**
- * This is different than [org.gradle.api.attributes.Category.CATEGORY_ATTRIBUTE], which has type
- * `Category` (cf `String`).
- */
-private val CATEGORY = Attribute.of("org.gradle.category", String::class.java)
-
 // TODO move
 @Suppress("UnstableApiUsage")
 internal object GraphWriter {
@@ -148,7 +147,7 @@ internal object GraphWriter {
   fun toDot(graph: Graph<Coordinates>) = buildString {
     val projectNodes = graph.nodes()
       .filterIsInstance<ProjectCoordinates>()
-      .map { it.toString() }
+      .map { it.gav() }
 
     appendReproducibleNewLine("strict digraph DependencyGraph {")
     appendReproducibleNewLine("  ratio=0.6;")
@@ -158,12 +157,12 @@ internal object GraphWriter {
     }
 
     graph.edges().forEach { edge ->
-      val from = edge.nodeU()
-      val to = edge.nodeV()
+      val source = edge.nodeU()
+      val target = edge.nodeV()
       val style =
-        if (from is ProjectCoordinates && to is ProjectCoordinates) " [style=bold color=\"#FF6347\" weight=8]"
+        if (source is ProjectCoordinates && target is ProjectCoordinates) " [style=bold color=\"#FF6347\" weight=8]"
         else ""
-      append("  \"$from\" -> \"$to\"$style;")
+      append("  \"$source\" -> \"$target\"$style;")
       append("\n")
     }
     append("}")

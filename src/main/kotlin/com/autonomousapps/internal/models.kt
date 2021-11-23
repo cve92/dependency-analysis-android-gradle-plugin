@@ -296,7 +296,8 @@ data class PublicComponent(
 
 data class Imports(
   val sourceType: SourceType,
-  val imports: Set<String>
+  /** Map of source-file path (e.g. `src/main/com/foo/Bar.kt`) to set of imports it contains. */
+  val imports: Map<String, Set<String>>
 )
 
 enum class SourceType {
