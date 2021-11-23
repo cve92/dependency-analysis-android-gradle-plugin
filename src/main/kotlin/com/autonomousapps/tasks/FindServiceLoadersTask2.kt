@@ -28,17 +28,14 @@ abstract class FindServiceLoadersTask2 : DefaultTask() {
     description = "Produces a report of all dependencies that include Java ServiceLoaders"
   }
 
-  private lateinit var artifacts: ArtifactCollection
+  private lateinit var compileClasspath: ArtifactCollection
 
-  fun setServiceLoaders(artifacts: ArtifactCollection) {
-    this.artifacts = artifacts
+  fun setCompileClasspath(artifacts: ArtifactCollection) {
+    this.compileClasspath = artifacts
   }
 
-  /**
-   * Unused, except as a task input for Gradle.
-   */
   @Classpath
-  fun getDependencies(): FileCollection = artifacts.artifactFiles
+  fun getCompileClasspath(): FileCollection = compileClasspath.artifactFiles
 
   @get:OutputFile
   abstract val output: RegularFileProperty
@@ -46,7 +43,7 @@ abstract class FindServiceLoadersTask2 : DefaultTask() {
   @TaskAction fun action() {
     val outputFile = output.getAndDelete()
 
-    val serviceLoaders = artifacts
+    val serviceLoaders = compileClasspath
       .filterNonGradle()
       .filter { it.file.name.endsWith(".jar") }
       .flatMapToSet { findServiceLoaders(it) }

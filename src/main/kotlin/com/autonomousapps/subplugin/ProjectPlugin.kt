@@ -389,10 +389,7 @@ internal class ProjectPlugin(private val project: Project) {
     // Produces a report of the dependencies required to build the project, along with their physical artifacts (jars).
     val artifactsReportTask = tasks.register<ArtifactsReportTask2>("artifactsReport$variantTaskName") {
       setCompileClasspath(
-        configurations[dependencyAnalyzer.compileConfigurationName]
-          .incoming
-          .artifactViewFor(dependencyAnalyzer.attributeValueJar)
-          .artifacts
+        configurations[dependencyAnalyzer.compileConfigurationName].artifactsFor(dependencyAnalyzer.attributeValueJar)
       )
 
       output.set(outputPaths.artifactsPath)
@@ -409,6 +406,9 @@ internal class ProjectPlugin(private val project: Project) {
     // Explodes jars to expose their secrets.
     val explodeJarTask = tasks.register<ExplodeJarTask>("explodeJar$variantTaskName") {
       inMemoryCache.set(inMemoryCacheProvider)
+      setCompileClasspath(
+        configurations[dependencyAnalyzer.compileConfigurationName].artifactsFor(dependencyAnalyzer.attributeValueJar)
+      )
       physicalArtifacts.set(artifactsReportTask.flatMap { it.output })
       androidLintTask?.let { task ->
         androidLinters.set(task.flatMap { it.output })
@@ -421,6 +421,9 @@ internal class ProjectPlugin(private val project: Project) {
     // Find the inline members of this project's dependencies.
     val inlineTask = tasks.register<FindInlineMembersTask>("findInlineMembers$variantTaskName") {
       inMemoryCacheProvider.set(this@ProjectPlugin.inMemoryCacheProvider)
+      setCompileClasspath(
+        configurations[dependencyAnalyzer.compileConfigurationName].artifactsFor(dependencyAnalyzer.attributeValueJar)
+      )
       artifacts.set(artifactsReportTask.flatMap { it.output })
       output.set(outputPaths.inlineUsagePath)
     }
@@ -436,7 +439,7 @@ internal class ProjectPlugin(private val project: Project) {
 
     // A report of service loaders.
     val findServiceLoadersTask = tasks.register<FindServiceLoadersTask2>("serviceLoader$variantTaskName") {
-      setServiceLoaders(
+      setCompileClasspath(
         configurations[dependencyAnalyzer.compileConfigurationName]
           .artifactsFor(dependencyAnalyzer.attributeValueJar)
       )
@@ -454,12 +457,17 @@ internal class ProjectPlugin(private val project: Project) {
       serviceLoaders.set(findServiceLoadersTask.flatMap { it.output })
       annotationProcessors.set(declaredProcsTask.flatMap { it.output })
       // Optional Android-only inputs
-      androidLintTask?.let { task -> androidLinters.set(task.flatMap { it.output }) }
       androidManifestTask?.let { task -> manifestComponents.set(task.flatMap { it.output }) }
       findAndroidResTask?.let { task -> androidRes.set(task.flatMap { it.output }) }
       findNativeLibsTask?.let { task -> nativeLibs.set(task.flatMap { it.output }) }
 
       outputDir.set(outputPaths.dependenciesDir)
+    }
+
+    tasks.register<GraphViewTask>("graphView$variantTaskName") {
+      setCompileClasspath(configurations[dependencyAnalyzer.compileConfigurationName])
+      jarAttr.set(dependencyAnalyzer.attributeValueJar)
+      outputDot.set(outputPaths.compileGraphDotPath)
     }
 
     // TODO FINISH PRODUCER SIDE BY CREATING A GRAPH WITH SERIALIZABLE FINAL-PUBLIC-DEPENDENCY REPRESENTATION

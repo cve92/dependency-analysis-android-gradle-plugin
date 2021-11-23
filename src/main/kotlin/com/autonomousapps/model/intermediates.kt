@@ -1,6 +1,7 @@
 package com.autonomousapps.model
 
 import com.autonomousapps.internal.KtFile
+import com.autonomousapps.internal.utils.ifNotEmpty
 import com.autonomousapps.internal.utils.toCoordinates
 import org.gradle.api.artifacts.component.ComponentIdentifier
 import java.io.File
@@ -81,28 +82,31 @@ internal data class AnnotationProcessorDependency(
     coordinates = componentIdentifier.toCoordinates()
   )
 
-  override fun compareTo(other: AnnotationProcessorDependency): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+  override fun compareTo(other: AnnotationProcessorDependency): Int = coordinates.compareTo(other.coordinates)
+
+  fun toCapability() = AnnotationProcessorCapability(processor, supportedAnnotationTypes)
 }
 
 internal data class InlineMemberDependency(
   override val coordinates: Coordinates,
   val inlineMembers: Set<String>
 ) : Comparable<InlineMemberDependency>, HasCoordinates {
-  override fun compareTo(other: InlineMemberDependency): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+
+  override fun compareTo(other: InlineMemberDependency): Int = coordinates.compareTo(other.coordinates)
+
+  fun toCapability() = InlineMemberCapability(inlineMembers)
 }
 
 internal data class NativeLibDependency(
   override val coordinates: Coordinates,
   val fileNames: Set<String>
 ) : Comparable<NativeLibDependency>, HasCoordinates {
-  override fun compareTo(other: NativeLibDependency): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+
+  override fun compareTo(other: NativeLibDependency): Int = coordinates.compareTo(other.coordinates)
+
+  fun toCapability() = NativeLibCapability(fileNames)
 }
+
 internal data class PhysicalArtifact(
   override val coordinates: Coordinates,
   /** Physical artifact on disk; a jar file. */
@@ -140,9 +144,9 @@ internal data class ServiceLoaderDependency(
     coordinates = componentIdentifier.toCoordinates()
   )
 
-  override fun compareTo(other: ServiceLoaderDependency): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+  override fun compareTo(other: ServiceLoaderDependency): Int = coordinates.compareTo(other.coordinates)
+
+  fun toCapability() = ServiceLoaderCapability(providerFile, providerClasses)
 }
 
 /**
@@ -208,6 +212,17 @@ internal data class ExplodedJar(
   }
 
   override fun compareTo(other: ExplodedJar): Int = coordinates.compareTo(other.coordinates)
+
+  fun toCapabilities(): List<Capability> {
+    val capabilities = mutableListOf<Capability>()
+    capabilities += InferredCapability(isCompileOnlyAnnotations = isCompileOnlyAnnotations)
+    classes.ifNotEmpty { capabilities += ClassCapability(it) }
+    constantFields.ifNotEmpty { capabilities += ConstantCapability(it) }
+    ktFiles.ifNotEmpty { capabilities += KtFileCapability(it) }
+    securityProviders.ifNotEmpty { capabilities += SecurityProviderCapability(it) }
+    androidLintRegistry?.let { capabilities += AndroidLinterCapability(it, isLintJar) }
+    return capabilities
+  }
 }
 
 data class Res(
@@ -227,9 +242,9 @@ data class Res(
     lines = lines
   )
 
-  override fun compareTo(other: Res): Int {
-    return coordinates.compareTo(other.coordinates)
-  }
+  override fun compareTo(other: Res): Int = coordinates.compareTo(other.coordinates)
+
+  fun toCapability() = AndroidResCapability(import, lines)
 
   data class Line(val type: String, val value: String)
 }

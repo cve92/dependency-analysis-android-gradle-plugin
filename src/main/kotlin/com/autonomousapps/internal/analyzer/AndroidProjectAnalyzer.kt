@@ -80,12 +80,7 @@ internal abstract class AndroidAnalyzer(
     return project.tasks.register<ManifestComponentsExtractionTask>(
       "extractPackageNameFromManifest$variantNameCapitalized"
     ) {
-      setArtifacts(
-        project.configurations[compileConfigurationName]
-          .incoming
-          .artifactViewFor("android-manifest")
-          .artifacts
-      )
+      setArtifacts(project.configurations[compileConfigurationName].artifactsFor("android-manifest"))
       output.set(outputPaths.manifestPackagesPath)
     }
   }
@@ -96,11 +91,9 @@ internal abstract class AndroidAnalyzer(
     return project.tasks.register<AndroidResToSourceAnalysisTask>(
       "findAndroidResBySourceUsage$variantNameCapitalized"
     ) {
+      // For AGP 3.5.x, this does not return any module dependencies
       val resourceArtifacts = project.configurations[compileConfigurationName]
-        .incoming
-        // For AGP 3.5.x, this does not return any module dependencies
-        .artifactViewFor("android-symbol-with-package-name")
-        .artifacts
+        .artifactsFor("android-symbol-with-package-name")
 
       manifestPackages.set(manifestPackageExtractionTask.flatMap { it.output })
       setResources(resourceArtifacts)
@@ -115,18 +108,10 @@ internal abstract class AndroidAnalyzer(
       "findAndroidResImports$variantNameCapitalized"
     ) {
       setAndroidSymbols(
-        project.configurations[compileConfigurationName]
-          .incoming
-          // For AGP 3.5.x, this does not return any module dependencies
-          .artifactViewFor("android-symbol-with-package-name")
-          .artifacts
+        // For AGP 3.5.x, this does not return any module dependencies
+        project.configurations[compileConfigurationName].artifactsFor("android-symbol-with-package-name")
       )
-      setAndroidPublicRes(
-        project.configurations[compileConfigurationName]
-          .incoming
-          .artifactViewFor("android-public-res")
-          .artifacts
-      )
+      setAndroidPublicRes(project.configurations[compileConfigurationName].artifactsFor("android-public-res"))
 
       output.set(outputPaths.androidResToSourceUsagePath)
     }

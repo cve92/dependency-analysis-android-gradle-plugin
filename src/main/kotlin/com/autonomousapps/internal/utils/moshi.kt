@@ -2,10 +2,7 @@
 
 package com.autonomousapps.internal.utils
 
-import com.autonomousapps.model.Coordinates
-import com.autonomousapps.model.FlatCoordinates
-import com.autonomousapps.model.ModuleCoordinates
-import com.autonomousapps.model.ProjectCoordinates
+import com.autonomousapps.model.*
 import com.squareup.moshi.FromJson
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
@@ -23,6 +20,27 @@ val MOSHI: Moshi by lazy {
         .withSubtype(ModuleCoordinates::class.java, "module_coord")
         .withSubtype(ProjectCoordinates::class.java, "project_coord")
         .withSubtype(FlatCoordinates::class.java, "flat_coord")
+    )
+    .add(
+      PolymorphicJsonAdapterFactory.of(Dependency::class.java, "dep")
+        .withSubtype(ModuleDependency::class.java, "module_dep")
+        .withSubtype(ProjectDependency::class.java, "project_dep")
+        .withSubtype(FlatDependency::class.java, "flat_dep")
+    )
+    .add(
+      PolymorphicJsonAdapterFactory.of(Capability::class.java, "cap")
+        .withSubtype(AndroidLinterCapability::class.java, "lint_cap")
+        .withSubtype(AndroidManifestCapability::class.java, "man_cap")
+        .withSubtype(AndroidResCapability::class.java, "res_cap")
+        .withSubtype(AnnotationProcessorCapability::class.java, "proc_cap")
+        .withSubtype(ClassCapability::class.java, "class_cap")
+        .withSubtype(ConstantCapability::class.java, "const_cap")
+        .withSubtype(InferredCapability::class.java, "infer_cap")
+        .withSubtype(InlineMemberCapability::class.java, "inline_cap")
+        .withSubtype(KtFileCapability::class.java, "kt_cap")
+        .withSubtype(NativeLibCapability::class.java, "nat_cap")
+        .withSubtype(ServiceLoaderCapability::class.java, "service_cap")
+        .withSubtype(SecurityProviderCapability::class.java, "prov_cap")
     )
     .add(TypeAdapters())
     .addLast(KotlinJsonAdapterFactory())

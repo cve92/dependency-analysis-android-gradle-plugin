@@ -1,7 +1,9 @@
 package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
-import com.autonomousapps.internal.utils.*
+import com.autonomousapps.internal.utils.fromJsonSet
+import com.autonomousapps.internal.utils.fromNullableJsonSet
+import com.autonomousapps.internal.utils.toJson
 import com.autonomousapps.model.*
 import com.autonomousapps.services.InMemoryCache
 import org.gradle.api.DefaultTask
@@ -55,11 +57,6 @@ abstract class SynthesizeDependenciesTask @Inject constructor(
   @get:Optional
   @get:PathSensitive(PathSensitivity.NONE)
   @get:InputFile
-  abstract val androidLinters: RegularFileProperty
-
-  @get:Optional
-  @get:PathSensitive(PathSensitivity.NONE)
-  @get:InputFile
   abstract val manifestComponents: RegularFileProperty
 
   @get:Optional
@@ -83,7 +80,6 @@ abstract class SynthesizeDependenciesTask @Inject constructor(
       inlineMembers.set(this@SynthesizeDependenciesTask.inlineMembers)
       serviceLoaders.set(this@SynthesizeDependenciesTask.serviceLoaders)
       annotationProcessors.set(this@SynthesizeDependenciesTask.annotationProcessors)
-      androidLinters.set(this@SynthesizeDependenciesTask.androidLinters)
       manifestComponents.set(this@SynthesizeDependenciesTask.manifestComponents)
       androidRes.set(this@SynthesizeDependenciesTask.androidRes)
       nativeLibs.set(this@SynthesizeDependenciesTask.nativeLibs)
@@ -101,7 +97,6 @@ interface SynthesizeDependenciesParameters : WorkParameters {
   val annotationProcessors: RegularFileProperty
 
   // Android-specific and therefore optional
-  val androidLinters: RegularFileProperty
   val manifestComponents: RegularFileProperty
   val androidRes: RegularFileProperty
   val nativeLibs: RegularFileProperty
@@ -111,10 +106,10 @@ interface SynthesizeDependenciesParameters : WorkParameters {
 
 abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenciesParameters> {
 
-  private val logger = getLogger<SynthesizeDependenciesTask>()
+  private val builders = sortedMapOf<Coordinates, DependencyBuilder>()
 
   override fun execute() {
-    val outputDir = parameters.outputDir.getAndClean(logger)
+    val outputDir = parameters.outputDir
 
     val physicalArtifacts = parameters.physicalArtifacts.fromJsonSet<PhysicalArtifact>()
     val explodedJars = parameters.explodedJars.fromJsonSet<ExplodedJar>()
@@ -122,79 +117,52 @@ abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenc
     val serviceLoaders = parameters.serviceLoaders.fromJsonSet<ServiceLoaderDependency>()
     val annotationProcessors = parameters.annotationProcessors.fromJsonSet<AnnotationProcessorDependency>()
     // Android-specific and therefore optional
-    // TODO don't need androidLinters, since it's already baked into explodedJars
-    val androidLinters = parameters.androidLinters.fromNullableJsonSet<AndroidLinterDependency>().orEmpty()
     val manifestComponents = parameters.manifestComponents.fromNullableJsonSet<AndroidManifestDependency>().orEmpty()
     val androidRes = parameters.androidRes.fromNullableJsonSet<Res>().orEmpty()
     val nativeLibs = parameters.nativeLibs.fromNullableJsonSet<NativeLibDependency>().orEmpty()
 
-    // TODO looking at all this, it looks like the "intermediates" dependencies are redundant. Can jump right to Capability
-    val builders = sortedMapOf<Coordinates, DependencyBuilder>()
-
-    fun <T : HasCoordinates> merge(
-      dependencies: Set<T>,
-      capabilities: (T) -> MutableList<Capability>
-    ) {
-      dependencies.forEach {
-        builders.merge(
-          it.coordinates,
-          DependencyBuilder(it.coordinates, capabilities(it)),
-          DependencyBuilder::concat
-        )
-      }
-    }
 
     physicalArtifacts.forEach { artifact ->
       builders.merge(
         artifact.coordinates,
-        DependencyBuilder(coordinates = artifact.coordinates, file = artifact.file),
+        DependencyBuilder(artifact.coordinates).apply { file = artifact.file },
         DependencyBuilder::concat
       )
     }
-    merge(explodedJars) { explodedJar ->
-      val capabilities = mutableListOf(
-        ClassCapability(explodedJar.classes),
-        ConstantCapability(explodedJar.constantFields),
-        InferredCapability(isCompileOnlyAnnotations = explodedJar.isCompileOnlyAnnotations),
-        KtFileCapability(explodedJar.ktFiles),
-        SecurityProviderCapability(explodedJar.securityProviders)
-      )
-      explodedJar.androidLintRegistry?.let { capabilities += AndroidLinterCapability(it, explodedJar.isLintJar) }
-      capabilities
-    }
-    merge(inlineMembers) { inlineMember ->
-      mutableListOf(InlineMemberCapability(inlineMember.inlineMembers))
-    }
-    merge(serviceLoaders) { serviceLoader ->
-      mutableListOf(ServiceLoaderCapability(serviceLoader.providerFile, serviceLoader.providerClasses))
-    }
-    merge(annotationProcessors) { proc ->
-      mutableListOf(AnnotationProcessorCapability(proc.processor, proc.supportedAnnotationTypes))
-    }
-    merge(manifestComponents) { manifest ->
-      mutableListOf(AndroidManifestCapability(manifest.packageName, manifest.componentMap))
-    }
-    merge(androidRes) { res ->
-      mutableListOf(AndroidResCapability(res.import, res.lines))
-    }
-    merge(nativeLibs) { nativeLib ->
-      mutableListOf(NativeLibCapability(nativeLib.fileNames))
-    }
+    merge(explodedJars) { it.toCapabilities() }
+    merge(inlineMembers) { listOf(it.toCapability()) }
+    merge(serviceLoaders) { listOf(it.toCapability()) }
+    merge(annotationProcessors) { listOf(it.toCapability()) }
+    merge(manifestComponents) { listOf(AndroidManifestCapability(it.packageName, it.componentMap)) }
+    merge(androidRes) { listOf(it.toCapability()) }
+    merge(nativeLibs) { listOf(it.toCapability()) }
 
     // Write every dependency to its own file in the output directory
     builders.values.asSequence()
       .map { it.toDependency() }
       .forEach { dependency ->
-        outputDir.file(dependency.coordinates.toFileName()).asFile.writeText(dependency.toJson())
+        outputDir.file(dependency.coordinates.toFileName()).get().asFile.writeText(dependency.toJson())
       }
+  }
+
+  private fun <T : HasCoordinates> merge(
+    dependencies: Set<T>,
+    newCapabilities: (T) -> List<Capability>
+  ) {
+    dependencies.forEach {
+      builders.merge(
+        it.coordinates,
+        DependencyBuilder(it.coordinates).apply { capabilities.addAll(newCapabilities(it)) },
+        DependencyBuilder::concat
+      )
+    }
   }
 }
 
-private class DependencyBuilder(
-  val coordinates: Coordinates,
-  val capabilities: MutableList<Capability> = mutableListOf(),
+private class DependencyBuilder(val coordinates: Coordinates) {
+
+  val capabilities: MutableList<Capability> = mutableListOf()
   var file: File? = null
-) {
 
   fun concat(other: DependencyBuilder): DependencyBuilder {
     other.file?.let { file = it }
@@ -214,4 +182,5 @@ private class DependencyBuilder(
   }
 }
 
-private fun Coordinates.toFileName(): String = toString().removePrefix(":").replace(':', '-')
+// TODO I'll need this reading files too
+private fun Coordinates.toFileName() = toString().replace(":", "__") + ".json"

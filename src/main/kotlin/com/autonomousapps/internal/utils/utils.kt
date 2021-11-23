@@ -2,16 +2,11 @@
 
 package com.autonomousapps.internal.utils
 
-import org.apache.commons.io.FileUtils
 import org.gradle.api.artifacts.result.DependencyResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
-import org.gradle.api.file.Directory
-import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.logging.Logger
 import java.io.File
-import java.io.IOException
 import java.util.*
 
 /**
@@ -21,16 +16,6 @@ internal fun RegularFileProperty.getAndDelete(): File {
   val file = get().asFile
   file.delete()
   return file
-}
-
-internal fun DirectoryProperty.getAndClean(logger: Logger): Directory {
-  val dir = get()
-  try {
-    FileUtils.deleteDirectory(dir.asFile)
-  } catch (e: IOException) {
-    logger.warn("Error deleting ${dir.asFile}: ${e.localizedMessage}")
-  }
-  return dir
 }
 
 internal inline fun <reified T> RegularFileProperty.fromJsonSet(): Set<T> = get().fromJsonSet()

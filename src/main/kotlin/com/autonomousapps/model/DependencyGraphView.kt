@@ -10,6 +10,7 @@ class DependencyGraphView(
   val kind: GraphKind,
   private val graph: Graph<Dependency>
 ) {
+
 }
 
 enum class GraphKind {

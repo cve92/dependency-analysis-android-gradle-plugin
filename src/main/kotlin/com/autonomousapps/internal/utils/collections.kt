@@ -277,3 +277,15 @@ internal fun <K, V> Sequence<Pair<K, V>>.toMutableMap(): MutableMap<K, V> = toMa
 internal inline fun <K, V, R> Map<out K, V>.mapToOrderedSet(transform: (Map.Entry<K, V>) -> R): Set<R> {
   return mapTo(TreeSet<R>(), transform)
 }
+
+internal inline fun <C> C.ifNotEmpty(block: (C) -> Unit) where C : Collection<*> {
+  if (isNotEmpty()) {
+    block(this)
+  }
+}
+
+internal inline fun <K, V> Map<K, V>.ifNotEmpty(block: (Map<K, V>) -> Unit) {
+  if (isNotEmpty()) {
+    block(this)
+  }
+}

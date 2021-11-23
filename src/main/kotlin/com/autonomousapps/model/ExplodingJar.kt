@@ -51,9 +51,9 @@ internal class ExplodingJar(
   /**
    * Map of class names to the public constants they declare. May be empty.
    */
-  val constants: Map<String, Set<String>> = analyzedClasses.associate {
-    it.className to it.constantFields
-  }
+  val constants: Map<String, Set<String>> = analyzedClasses.asSequence()
+    .filterNot { it.constantFields.isEmpty() }
+    .associate { it.className to it.constantFields }
 
   /**
    * A jar is a lint jar if it's _only_ for linting.

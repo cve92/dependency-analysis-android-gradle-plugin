@@ -15,6 +15,8 @@ import kotlinx.metadata.KmFunction
 import kotlinx.metadata.KmProperty
 import kotlinx.metadata.jvm.KotlinClassMetadata
 import org.gradle.api.DefaultTask
+import org.gradle.api.artifacts.ArtifactCollection
+import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
@@ -36,6 +38,18 @@ abstract class FindInlineMembersTask @Inject constructor(
 
   @get:Internal
   abstract val inMemoryCacheProvider: Property<InMemoryCache>
+
+  private lateinit var compileClasspath: ArtifactCollection
+
+  /**
+   * This artifact collection is the result of resolving the compile classpath.
+   */
+  fun setCompileClasspath(compileClasspath: ArtifactCollection) {
+    this.compileClasspath = compileClasspath
+  }
+
+  @Classpath
+  fun getCompileClasspath(): FileCollection = compileClasspath.artifactFiles
 
   /**
    * [PhysicalArtifact]s used to compile this project.

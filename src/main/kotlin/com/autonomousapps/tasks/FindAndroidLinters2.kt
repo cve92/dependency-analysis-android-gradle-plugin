@@ -12,7 +12,9 @@ import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection
 import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.*
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
 import java.io.BufferedReader
 import java.io.File
 import java.util.zip.ZipFile
@@ -34,8 +36,7 @@ abstract class FindAndroidLinters2 : DefaultTask() {
     this.lintJars = lintJars
   }
 
-  @PathSensitive(PathSensitivity.RELATIVE)
-  @InputFiles
+  @Classpath
   fun getLintArtifactFiles(): FileCollection = lintJars.artifactFiles
 
   @get:OutputFile
