@@ -68,6 +68,9 @@ dependencies {
   implementation("com.squareup.moshi:moshi-kotlin:1.12.0") {
     because("For writing reports based on Kotlin classes")
   }
+  implementation("com.squareup.moshi:moshi-adapters:1.12.0") {
+    because("For writing reports based on Kotlin classes")
+  }
   implementation("org.jetbrains.kotlin:kotlin-reflect") {
     because("For Kotlin ABI analysis")
   }
