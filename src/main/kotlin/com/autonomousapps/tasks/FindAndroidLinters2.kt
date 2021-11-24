@@ -45,7 +45,7 @@ abstract class FindAndroidLinters2 : DefaultTask() {
   @TaskAction fun action() {
     val outputFile = output.getAndDelete()
 
-    val linters = lintJars.asSequence()
+    val linters: Set<AndroidLinterDependency> = lintJars.asSequence()
       // Sometimes the file doesn't exist. Is this a bug? A feature? Who knows?
       .filter { it.file.exists() }
       .mapNotNull {

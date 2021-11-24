@@ -62,12 +62,12 @@ abstract class FindAndroidResImportsTask : DefaultTask() {
   fun action() {
     val outputFile = output.getAndDelete()
 
-    val androidRes = (doThing(androidSymbols) + doThing(androidPublicRes)).toSortedSet()
+    val androidRes: Set<AndroidRes> = (androidResFrom(androidSymbols) + androidResFrom(androidPublicRes)).toSortedSet()
 
     outputFile.writeText(androidRes.toJson())
   }
 
-  private fun doThing(artifacts: ArtifactCollection): Set<AndroidRes> {
+  private fun androidResFrom(artifacts: ArtifactCollection): Set<AndroidRes> {
     return artifacts.mapNotNullToSet { resArtifact ->
       try {
         // TODO this could be more efficient. It opens the file twice

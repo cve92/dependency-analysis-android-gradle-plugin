@@ -5,28 +5,29 @@ import dev.zacsweers.moshix.sealed.annotations.TypeLabel
 
 @JsonClass(generateAdapter = false, generator = "sealed:type")
 sealed class Source(
-  /**
-   * Source file path relative to project dir (e.g. `src/main/com/foo/Bar.kt`).
-   */
+  /** Source file path relative to project dir (e.g. `src/main/com/foo/Bar.kt`). */
   open val relativePath: String
 ) : Comparable<Source> {
 
   override fun compareTo(other: Source): Int = when (this) {
-    is CodeSource -> {
-      if (other is AndroidResSource) 1 else relativePath.compareTo(other.relativePath)
-    }
-    is AndroidResSource -> {
-      if (other is CodeSource) -1 else relativePath.compareTo(other.relativePath)
+    is RawCodeSource -> if (other !is RawCodeSource) 1 else defaultCompareTo(other)
+    is AndroidResSource -> if (other !is AndroidResSource) -1 else defaultCompareTo(other)
+    is ByteCodeSource -> {
+      when (other) {
+        is RawCodeSource -> -1
+        !is ByteCodeSource -> 1
+        else -> defaultCompareTo(other)
+      }
     }
   }
+
+  private fun defaultCompareTo(other: Source): Int = relativePath.compareTo(other.relativePath)
 }
 
-/**
- * A single source file in this project.
- */
-@TypeLabel("code")
+/** A single source file (e.g., `.java`, `.kt`) in this project. */
+@TypeLabel("raw_code")
 @JsonClass(generateAdapter = false)
-data class CodeSource(
+data class RawCodeSource(
   override val relativePath: String,
   val kind: Kind,
   val imports: Set<String>
@@ -38,12 +39,20 @@ data class CodeSource(
   }
 }
 
-/**
- * A single XML file in this project.
- */
+/** A single `.class` file in this project. */
+@TypeLabel("bytecode")
+@JsonClass(generateAdapter = false)
+data class ByteCodeSource(
+  override val relativePath: String,
+  val className: String,
+  val source: String?,
+  val usedClasses: Set<String>
+) : Source(relativePath)
+
+/** A single XML file in this project. */
 @TypeLabel("android_res")
 @JsonClass(generateAdapter = false)
-class AndroidResSource(
+data class AndroidResSource(
   override val relativePath: String,
   val styleParentRefs: Set<StyleParentRef>,
   val attrRefs: Set<AttrRef>

@@ -478,36 +478,25 @@ internal class ProjectPlugin(private val project: Project) {
 
     // TODO BASICALLY RE-DO THE CONSUMER SIDE BY USING GRAPH ANALYSIS INSTEAD OF WHAT WENT BEFORE
 
-    // Produces a report that lists all import declarations in the source of the current project.
+    // Lists all import declarations in the source of the current project.
     val explodeCodeSourceTask = tasks.register<CodeSourceExploderTask>("explodeCodeSource$variantTaskName") {
       dependencyAnalyzer.javaSourceFiles?.let { javaSourceFiles.setFrom(it) }
       kotlinSourceFiles.setFrom(dependencyAnalyzer.kotlinSourceFiles)
       output.set(outputPaths.explodedSourcePath)
     }
 
+    // Lists all classes _used by_ the given project. Analyzes bytecode and collects all class references.
+    val explodeByteCodeTask = dependencyAnalyzer.registerByteCodeSourceExploderTask()
+
+    // Lists all possibly-external XML resources referenced by this project's Android resources (or null if this isn't
+    // an Android project).
     val explodeXmlSourceTask = dependencyAnalyzer.registerExplodeXmlSourceTask()
-
-    // Produces a report that lists all dependencies that contributed constants used by the current project.
-    // val constantTask = tasks.register<ConstantsFinderTask>("constantUsageDetector$variantTaskName") {
-    //   // inMemoryCacheProvider.set(this@ProjectPlugin.inMemoryCacheProvider)
-    //   // components.set(analyzeJarTask.flatMap { it.allComponentsReport })
-    //   // output.set(outputPaths.constantUsagePath)
-    // }
-
-    // Produces a report that list all of the dependencies that contribute types determined to be used based on the
-    // presence of associated import statements. One example caught only by this task: consumer project uses
-    // `Optional<Thing>` and producer project supplies Thing. Thanks to type erasure, `Thing` is not present in the
-    // consumer's bytecode, so can only be detected by source code analysis.
-//    val generalUsageTask = tasks.register<GeneralUsageDetectionTask>("generalsUsageDetector$variantTaskName") {
-//      components.set(analyzeJarTask.flatMap { it.allComponentsReport })
-//      imports.set(importFinderTask.flatMap { it.importsReport })
-//
-//      output.set(outputPaths.generalUsagePath)
-//    }
 
     /*
      * Producers -> Consumer. Bring it all together. How does this project (consumer) use its dependencies (producers)?
      */
+
+    
   }
 
   /**
@@ -555,8 +544,8 @@ internal class ProjectPlugin(private val project: Project) {
     // A report of all dependencies that supply Android linters on the compile classpath.
     val androidLintTask = dependencyAnalyzer.registerFindAndroidLintersTask(locateDependencies)
 
-    // Produces a report that lists all dependencies, whether or not they're transitive, and associated with the classes
-    // they contain.
+    // Produces a report that lists all dependencies, whether they're transitive, and associated with the classes they
+    // contain.
     val analyzeJarTask = tasks.register<AnalyzeJarTask>("analyzeJar$variantTaskName") {
       inMemoryCache.set(inMemoryCacheProvider)
 

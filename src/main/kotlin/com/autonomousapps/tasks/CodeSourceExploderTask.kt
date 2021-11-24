@@ -9,8 +9,7 @@ import com.autonomousapps.internal.grammar.SimpleLexer
 import com.autonomousapps.internal.grammar.SimpleParser
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.CodeSource
-import com.autonomousapps.model.Source
+import com.autonomousapps.model.RawCodeSource
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
@@ -90,24 +89,26 @@ private class SourceExploder(
   private val kotlinSourceFiles: ConfigurableFileCollection
 ) {
 
-  fun explode(): Set<Source> {
-    val destination = sortedSetOf<Source>()
+  fun explode(): Set<RawCodeSource> {
+    val destination = sortedSetOf<RawCodeSource>()
     javaSourceFiles.mapTo(destination) {
-      CodeSource(
-        relativePath = it.toRelativeString(projectDir),
-        kind = CodeSource.Kind.JAVA,
+      RawCodeSource(
+        relativePath = relativize(it),
+        kind = RawCodeSource.Kind.JAVA,
         imports = parseSourceFileForImports(it)
       )
     }
     kotlinSourceFiles.mapTo(destination) {
-      CodeSource(
-        relativePath = it.toRelativeString(projectDir),
-        kind = CodeSource.Kind.KOTLIN,
+      RawCodeSource(
+        relativePath = relativize(it),
+        kind = RawCodeSource.Kind.KOTLIN,
         imports = parseSourceFileForImports(it)
       )
     }
     return destination
   }
+
+  private fun relativize(file: File) = file.toRelativeString(projectDir)
 
   private fun parseSourceFileForImports(file: File): Set<String> {
     val parser = newSimpleParser(file)

@@ -157,8 +157,8 @@ internal abstract class AndroidAnalyzer(
     }
   }
 
-  override fun registerFindNativeLibsTask2(): TaskProvider<FindNativeLibsTask> {
-    return project.tasks.register<FindNativeLibsTask>("findNativeLibs$variantNameCapitalized") {
+  override fun registerFindNativeLibsTask2(): TaskProvider<FindNativeLibsTask2> {
+    return project.tasks.register<FindNativeLibsTask2>("findNativeLibs$variantNameCapitalized") {
       setAndroidJni(project.configurations[compileConfigurationName].artifactsFor(ArtifactAttributes.ANDROID_JNI))
       output.set(outputPaths.nativeDependenciesPath)
     }
@@ -327,6 +327,14 @@ internal class AndroidAppAnalyzer(
     }
   }
 
+  override fun registerByteCodeSourceExploderTask(): TaskProvider<ClassListExploderTask> {
+    return project.tasks.register<ClassListExploderTask>("explodeByteCodeSource$variantNameCapitalized") {
+      kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
+      javaClasses.from(javaCompileTask().get().outputs.files.asFileTree)
+      output.set(outputPaths.allUsedClassesPath)
+    }
+  }
+
   override fun registerFindUnusedProcsTask(
     findDeclaredProcs: TaskProvider<FindDeclaredProcsTask>,
     importFinder: TaskProvider<ImportFinderTask>
@@ -362,8 +370,10 @@ internal class AndroidLibAnalyzer(
   agpVersion = agpVersion
 ) {
 
-  override fun registerClassAnalysisTask(createVariantFiles: TaskProvider<out CreateVariantFiles>): TaskProvider<JarAnalysisTask> =
-    project.tasks.register<JarAnalysisTask>("analyzeClassUsage$variantNameCapitalized") {
+  override fun registerClassAnalysisTask(
+    createVariantFiles: TaskProvider<out CreateVariantFiles>
+  ): TaskProvider<JarAnalysisTask> {
+    return project.tasks.register<JarAnalysisTask>("analyzeClassUsage$variantNameCapitalized") {
       variantFiles.set(createVariantFiles.flatMap { it.output })
 
       jar.set(getBundleTaskOutput())
@@ -382,6 +392,14 @@ internal class AndroidLibAnalyzer(
       output.set(outputPaths.allUsedClassesPath)
       outputPretty.set(outputPaths.allUsedClassesPrettyPath)
     }
+  }
+
+  override fun registerByteCodeSourceExploderTask(): TaskProvider<JarExploderTask> {
+    return project.tasks.register<JarExploderTask>("explodeByteCodeSource$variantNameCapitalized") {
+      jar.set(getBundleTaskOutput())
+      output.set(outputPaths.allUsedClassesPath)
+    }
+  }
 
   override fun registerAbiAnalysisTask(
     analyzeJarTask: TaskProvider<AnalyzeJarTask>,

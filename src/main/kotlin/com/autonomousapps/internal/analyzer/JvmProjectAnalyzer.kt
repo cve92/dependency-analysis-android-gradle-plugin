@@ -60,8 +60,10 @@ internal abstract class JvmAnalyzer(
   final override val testJavaCompileName: String = "compileTestJava"
   final override val testKotlinCompileName: String = "compileTestKotlin"
 
-  final override fun registerClassAnalysisTask(createVariantFiles: TaskProvider<out CreateVariantFiles>): TaskProvider<ClassListAnalysisTask> =
-    project.tasks.register<ClassListAnalysisTask>("analyzeClassUsage$variantNameCapitalized") {
+  final override fun registerClassAnalysisTask(
+    createVariantFiles: TaskProvider<out CreateVariantFiles>
+  ): TaskProvider<ClassListAnalysisTask> {
+    return project.tasks.register<ClassListAnalysisTask>("analyzeClassUsage$variantNameCapitalized") {
       variantFiles.set(createVariantFiles.flatMap { it.output })
 
       javaCompileTask()?.let { javaClasses.from(it.get().outputs.files.asFileTree) }
@@ -79,6 +81,15 @@ internal abstract class JvmAnalyzer(
       output.set(outputPaths.allUsedClassesPath)
       outputPretty.set(outputPaths.allUsedClassesPrettyPath)
     }
+  }
+
+  final override fun registerByteCodeSourceExploderTask(): TaskProvider<ClassListExploderTask> {
+    return project.tasks.register<ClassListExploderTask>("explodeByteCodeSource$variantNameCapitalized") {
+      javaCompileTask()?.let { javaClasses.from(it.get().outputs.files.asFileTree) }
+      kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
+      output.set(outputPaths.allUsedClassesPath)
+    }
+  }
 
   final override fun registerFindDeclaredProcsTask(
     inMemoryCache: Provider<InMemoryCache>,

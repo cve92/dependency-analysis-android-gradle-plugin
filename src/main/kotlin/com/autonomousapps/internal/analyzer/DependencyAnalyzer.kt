@@ -49,12 +49,12 @@ internal interface DependencyAnalyzer {
 
   fun registerCreateVariantFilesTask(): TaskProvider<out CreateVariantFiles>
 
-  /**
-   * This produces a report that lists all of the used classes (FQCN) in the project.
-   */
+  /** This produces a report that lists all of the used classes (FQCN) in the project. */
   fun registerClassAnalysisTask(
     createVariantFiles: TaskProvider<out CreateVariantFiles>
   ): TaskProvider<out ClassAnalysisTask>
+
+  fun registerByteCodeSourceExploderTask(): TaskProvider<out ByteCodeSourceExploderTask>
 
   fun registerManifestPackageExtractionTask(): TaskProvider<ManifestPackageExtractionTask>? = null
 
@@ -73,7 +73,7 @@ internal interface DependencyAnalyzer {
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
   ): TaskProvider<FindNativeLibsTask>? = null
 
-  fun registerFindNativeLibsTask2(): TaskProvider<FindNativeLibsTask>? = null
+  fun registerFindNativeLibsTask2(): TaskProvider<FindNativeLibsTask2>? = null
 
   fun registerFindAndroidLintersTask(
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
