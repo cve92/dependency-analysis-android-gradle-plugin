@@ -21,6 +21,9 @@ sealed class Source(
   }
 }
 
+/**
+ * A single source file in this project.
+ */
 @TypeLabel("code")
 @JsonClass(generateAdapter = false)
 data class CodeSource(
@@ -35,10 +38,67 @@ data class CodeSource(
   }
 }
 
+/**
+ * A single XML file in this project.
+ */
 @TypeLabel("android_res")
 @JsonClass(generateAdapter = false)
 class AndroidResSource(
-  override val relativePath: String
+  override val relativePath: String,
+  val styleParentRefs: Set<StyleParentRef>,
+  val attrRefs: Set<AttrRef>
 ) : Source(relativePath) {
 
+  /** The parent of a style resource, e.g. "Theme.AppCompat.Light.DarkActionBar". */
+  data class StyleParentRef(val styleParent: String)
+
+  /** * Any attribute that looks like a reference to another resource. */
+  data class AttrRef(val type: String, val id: String) {
+    companion object {
+
+      private val TYPE_REGEX = Regex("""@(?:.+:)?(.+)/""")
+      private val ATTR_REGEX = Regex("""\?(?:.+/)?(.+)""")
+
+      /**
+       * On consumer side, only get attrs from the XML document when:
+       * 1. They're not an ID (don't start with `@+id` or `@id`)
+       * 2. They're not a tools namespace (don't start with `tools:`)
+       * 3. Their value starts with `?`, like `?themeColor`.
+       * 4. Their value starts with `@`, like `@drawable/`.
+       *
+       * Will return `null` if the map entry doesn't match an expected pattern.
+       */
+      fun from(mapEntry: Map.Entry<String, String>): AttrRef? {
+        if (mapEntry.isId()) return null
+        if (mapEntry.isToolsAttr()) return null
+
+        val id = mapEntry.value
+        return if (id.startsWith('?')) {
+          AttrRef(
+            type = "attr",
+            id = id.attr().replace('.', '_')
+          )
+        } else if (id.startsWith("@")) {
+          AttrRef(
+            type = id.type(),
+            // @drawable/some_drawable => some_drawable
+            id = id.substringAfterLast('/').replace('.', '_')
+          )
+        } else {
+          null
+        }
+      }
+
+      private fun Map.Entry<String, String>.isId() = value.startsWith("@+") || value.startsWith("@id")
+      private fun Map.Entry<String, String>.isToolsAttr() = key.startsWith("tools:")
+
+      // @drawable/some_drawable => drawable
+      // @android:drawable/some_drawable => drawable
+      private fun String.type(): String = TYPE_REGEX.find(this)!!.groupValues[1]
+
+      // ?themeColor => themeColor
+      // ?attr/themeColor => themeColor
+      private fun String.attr(): String = ATTR_REGEX.find(this)!!.groupValues[1]
+    }
+  }
 }

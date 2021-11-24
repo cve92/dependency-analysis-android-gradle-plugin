@@ -479,11 +479,13 @@ internal class ProjectPlugin(private val project: Project) {
     // TODO BASICALLY RE-DO THE CONSUMER SIDE BY USING GRAPH ANALYSIS INSTEAD OF WHAT WENT BEFORE
 
     // Produces a report that lists all import declarations in the source of the current project.
-    val explodeSourceTask = tasks.register<CodeSourceExploderTask>("explodeSource$variantTaskName") {
+    val explodeCodeSourceTask = tasks.register<CodeSourceExploderTask>("explodeCodeSource$variantTaskName") {
       dependencyAnalyzer.javaSourceFiles?.let { javaSourceFiles.setFrom(it) }
       kotlinSourceFiles.setFrom(dependencyAnalyzer.kotlinSourceFiles)
       output.set(outputPaths.explodedSourcePath)
     }
+
+    val explodeXmlSourceTask = dependencyAnalyzer.registerExplodeXmlSourceTask()
 
     // Produces a report that lists all dependencies that contributed constants used by the current project.
     // val constantTask = tasks.register<ConstantsFinderTask>("constantUsageDetector$variantTaskName") {

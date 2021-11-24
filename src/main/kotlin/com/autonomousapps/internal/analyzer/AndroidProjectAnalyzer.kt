@@ -103,20 +103,6 @@ internal abstract class AndroidAnalyzer(
     }
   }
 
-  override fun registerFindAndroidResTask(): TaskProvider<FindAndroidResImportsTask> {
-    return project.tasks.register<FindAndroidResImportsTask>(
-      "findAndroidResImports$variantNameCapitalized"
-    ) {
-      setAndroidSymbols(
-        // For AGP 3.5.x, this does not return any module dependencies
-        project.configurations[compileConfigurationName].artifactsFor("android-symbol-with-package-name")
-      )
-      setAndroidPublicRes(project.configurations[compileConfigurationName].artifactsFor("android-public-res"))
-
-      output.set(outputPaths.androidResToSourceUsagePath)
-    }
-  }
-
   override fun registerAndroidResToResAnalysisTask(): TaskProvider<AndroidResToResToResAnalysisTask> {
     return project.tasks.register<AndroidResToResToResAnalysisTask>(
       "findAndroidResByResUsage$variantNameCapitalized"
@@ -136,6 +122,27 @@ internal abstract class AndroidAnalyzer(
 
       androidLocalRes.setFrom(getAndroidRes())
 
+      output.set(outputPaths.androidResToResUsagePath)
+    }
+  }
+
+  override fun registerFindAndroidResTask(): TaskProvider<FindAndroidResImportsTask> {
+    return project.tasks.register<FindAndroidResImportsTask>(
+      "findAndroidResImports$variantNameCapitalized"
+    ) {
+      setAndroidSymbols(
+        // For AGP 3.5.x, this does not return any module dependencies
+        project.configurations[compileConfigurationName].artifactsFor("android-symbol-with-package-name")
+      )
+      setAndroidPublicRes(project.configurations[compileConfigurationName].artifactsFor("android-public-res"))
+
+      output.set(outputPaths.androidResToSourceUsagePath)
+    }
+  }
+
+  override fun registerExplodeXmlSourceTask(): TaskProvider<XmlSourceExploderTask> {
+    return project.tasks.register<XmlSourceExploderTask>("explodeXmlSource$variantNameCapitalized") {
+      androidLocalRes.setFrom(getAndroidRes())
       output.set(outputPaths.androidResToResUsagePath)
     }
   }

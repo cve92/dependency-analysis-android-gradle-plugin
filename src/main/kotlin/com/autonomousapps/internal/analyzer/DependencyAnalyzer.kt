@@ -64,9 +64,10 @@ internal interface DependencyAnalyzer {
     manifestPackageExtractionTask: TaskProvider<ManifestPackageExtractionTask>
   ): TaskProvider<AndroidResToSourceAnalysisTask>? = null
 
-  fun registerFindAndroidResTask(): TaskProvider<FindAndroidResImportsTask>? = null
-
   fun registerAndroidResToResAnalysisTask(): TaskProvider<AndroidResToResToResAnalysisTask>? = null
+
+  fun registerFindAndroidResTask(): TaskProvider<FindAndroidResImportsTask>? = null
+  fun registerExplodeXmlSourceTask(): TaskProvider<XmlSourceExploderTask>? = null
 
   fun registerFindNativeLibsTask(
     locateDependenciesTask: TaskProvider<LocateDependenciesTask>
