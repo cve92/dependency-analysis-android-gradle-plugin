@@ -1,5 +1,3 @@
-@file:Suppress("UnstableApiUsage")
-
 package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
@@ -27,19 +25,15 @@ import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
 
-/**
- * Parses this project's source and extracts all import statements. The output contains the list of all source by type,
- * including only Java and Kotlin source at this time.
- */
 @CacheableTask
-abstract class ImportFinderTask @Inject constructor(
+abstract class SourceExploderTask @Inject constructor(
   private val workerExecutor: WorkerExecutor,
   private val layout: ProjectLayout
 ) : DefaultTask() {
 
   init {
     group = TASK_GROUP_DEP_INTERNAL
-    description = "Produces a report of imports present in Java and Kotlin source"
+    description = "Parses Java and Kotlin source to detect source-only usages"
   }
 
   /**
@@ -56,55 +50,51 @@ abstract class ImportFinderTask @Inject constructor(
   @get:InputFiles
   abstract val kotlinSourceFiles: ConfigurableFileCollection
 
-  /**
-   * A [`Set<Imports>`][Imports] of imports present in project source. This set has two elements, one for Java and one
-   * for Kotlin source.
-   */
   @get:OutputFile
-  abstract val importsReport: RegularFileProperty
+  abstract val output: RegularFileProperty
 
-  @TaskAction
-  fun action() {
-    workerExecutor.noIsolation().submit(ImportFinderWorkAction::class.java) {
+  @TaskAction fun action() {
+    workerExecutor.noIsolation().submit(SourceExploderWorkAction::class.java) {
       projectDir.set(layout.projectDirectory)
-      javaSourceFiles.setFrom(this@ImportFinderTask.javaSourceFiles)
-      kotlinSourceFiles.setFrom(this@ImportFinderTask.kotlinSourceFiles)
-      constantUsageReport.set(this@ImportFinderTask.importsReport)
+      javaSourceFiles.setFrom(this@SourceExploderTask.javaSourceFiles)
+      kotlinSourceFiles.setFrom(this@SourceExploderTask.kotlinSourceFiles)
+      output.set(this@SourceExploderTask.output)
     }
   }
 }
 
-interface ImportFinderParameters : WorkParameters {
+interface SourceExploderParameters : WorkParameters {
   val projectDir: DirectoryProperty
   val javaSourceFiles: ConfigurableFileCollection
   val kotlinSourceFiles: ConfigurableFileCollection
-  val constantUsageReport: RegularFileProperty
+  val output: RegularFileProperty
 }
 
-abstract class ImportFinderWorkAction : WorkAction<ImportFinderParameters> {
+abstract class SourceExploderWorkAction : WorkAction<SourceExploderParameters> {
 
-  private val logger = getLogger<ImportFinderTask>()
+  private val logger = getLogger<SourceExploderTask>()
 
   override fun execute() {
     // Output
-    val reportFile = parameters.constantUsageReport.getAndDelete()
+    val reportFile = parameters.output.getAndDelete()
 
-    val imports = ImportFinder(
+    val explodedSource = SourceExploder(
       projectDir = parameters.projectDir.get().asFile,
       javaSourceFiles = parameters.javaSourceFiles,
       kotlinSourceFiles = parameters.kotlinSourceFiles
     ).find()
 
-    logger.info("Imports: $imports")
-    reportFile.writeText(imports.toJson())
+    logger.info("Imports: $explodedSource")
+    reportFile.writeText(explodedSource.toJson())
   }
 }
 
-internal class ImportFinder(
+private class SourceExploder(
   private val projectDir: File,
   private val javaSourceFiles: ConfigurableFileCollection,
   private val kotlinSourceFiles: ConfigurableFileCollection
 ) {
+
   fun find(): Set<Imports> {
     val javaImports = Imports(
       SourceType.JAVA, javaSourceFiles.associate { parseSourceFileForImports(it) }
@@ -128,16 +118,16 @@ internal class ImportFinder(
     return SimpleParser(tokens)
   }
 
-  private fun walkTree(parser: SimpleParser): SimpleImportListener {
+  private fun walkTree(parser: SimpleParser): SourceListener {
     val tree = parser.file()
     val walker = ParseTreeWalker()
-    val importListener = SimpleImportListener()
+    val importListener = SourceListener()
     walker.walk(importListener, tree)
     return importListener
   }
 }
 
-private class SimpleImportListener : SimpleBaseListener() {
+private class SourceListener : SimpleBaseListener() {
 
   private val imports = mutableSetOf<String>()
 
