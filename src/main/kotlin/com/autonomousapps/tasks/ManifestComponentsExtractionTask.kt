@@ -7,7 +7,7 @@ import com.autonomousapps.internal.ManifestParser
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.mapNotNullToOrderedSet
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.AndroidManifestDependency
+import com.autonomousapps.model.intermediates.AndroidManifestDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection

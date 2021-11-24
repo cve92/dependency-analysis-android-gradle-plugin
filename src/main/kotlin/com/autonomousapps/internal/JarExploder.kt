@@ -4,9 +4,9 @@ import com.autonomousapps.internal.asm.ClassReader
 import com.autonomousapps.internal.utils.asClassFiles
 import com.autonomousapps.internal.utils.getLogger
 import com.autonomousapps.internal.utils.mapToOrderedSet
-import com.autonomousapps.model.AndroidLinterDependency
-import com.autonomousapps.model.ExplodedJar
-import com.autonomousapps.model.ExplodingJar
+import com.autonomousapps.model.intermediates.AndroidLinterDependency
+import com.autonomousapps.model.intermediates.ExplodedJar
+import com.autonomousapps.model.intermediates.ExplodingJar
 import com.autonomousapps.model.PhysicalArtifact
 import com.autonomousapps.services.InMemoryCache
 import com.autonomousapps.tasks.ExplodeJarTask

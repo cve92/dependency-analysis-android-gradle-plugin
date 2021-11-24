@@ -1,6 +1,7 @@
 package com.autonomousapps.model
 
 import com.autonomousapps.internal.KtFile
+import com.autonomousapps.model.intermediates.AndroidRes
 import com.squareup.moshi.JsonClass
 import dev.zacsweers.moshix.sealed.annotations.TypeLabel
 

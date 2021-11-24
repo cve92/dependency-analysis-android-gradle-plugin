@@ -1,4 +1,4 @@
-package com.autonomousapps.model
+package com.autonomousapps.model.intermediates
 
 import com.autonomousapps.internal.Access
 import com.autonomousapps.internal.AnalyzedClass

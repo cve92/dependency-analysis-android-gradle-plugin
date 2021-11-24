@@ -1,8 +1,9 @@
-package com.autonomousapps.model
+package com.autonomousapps.model.intermediates
 
 import com.autonomousapps.internal.KtFile
 import com.autonomousapps.internal.utils.ifNotEmpty
 import com.autonomousapps.internal.utils.toCoordinates
+import com.autonomousapps.model.*
 import org.gradle.api.artifacts.component.ComponentIdentifier
 
 internal interface DependencyView<T> : Comparable<T> where T : DependencyView<T> {

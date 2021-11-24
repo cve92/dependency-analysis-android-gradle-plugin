@@ -2,7 +2,7 @@ package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.NativeLibDependency
+import com.autonomousapps.model.intermediates.NativeLibDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection

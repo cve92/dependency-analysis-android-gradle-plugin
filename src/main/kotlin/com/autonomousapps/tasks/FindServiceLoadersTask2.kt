@@ -4,7 +4,7 @@ import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.ANNOTATION_PROCESSOR_PATH
 import com.autonomousapps.internal.SERVICE_LOADER_PATH
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.ServiceLoaderDependency
+import com.autonomousapps.model.intermediates.ServiceLoaderDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ArtifactCollection
 import org.gradle.api.artifacts.result.ResolvedArtifactResult

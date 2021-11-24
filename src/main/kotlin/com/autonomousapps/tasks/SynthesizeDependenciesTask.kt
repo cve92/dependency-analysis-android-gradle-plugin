@@ -5,6 +5,7 @@ import com.autonomousapps.internal.utils.fromJsonSet
 import com.autonomousapps.internal.utils.fromNullableJsonSet
 import com.autonomousapps.internal.utils.toJson
 import com.autonomousapps.model.*
+import com.autonomousapps.model.intermediates.*
 import com.autonomousapps.services.InMemoryCache
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty

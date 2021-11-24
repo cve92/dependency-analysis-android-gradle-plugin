@@ -5,7 +5,7 @@ package com.autonomousapps.tasks
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.JarExploder
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.AndroidLinterDependency
+import com.autonomousapps.model.intermediates.AndroidLinterDependency
 import com.autonomousapps.services.InMemoryCache
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ArtifactCollection

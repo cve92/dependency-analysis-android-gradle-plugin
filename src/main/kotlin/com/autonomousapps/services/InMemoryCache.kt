@@ -5,8 +5,8 @@ package com.autonomousapps.services
 import com.autonomousapps.FLAG_MAX_CACHE_SIZE
 import com.autonomousapps.internal.AnalyzedJar
 import com.autonomousapps.internal.AnnotationProcessor
-import com.autonomousapps.model.AnnotationProcessorDependency
-import com.autonomousapps.model.ExplodingJar
+import com.autonomousapps.model.intermediates.AnnotationProcessorDependency
+import com.autonomousapps.model.intermediates.ExplodingJar
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import org.gradle.api.GradleException

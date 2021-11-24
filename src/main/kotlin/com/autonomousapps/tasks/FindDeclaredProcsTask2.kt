@@ -5,7 +5,7 @@ import com.autonomousapps.internal.ANNOTATION_PROCESSOR_PATH
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.toJson
 import com.autonomousapps.internal.utils.toPrettyString
-import com.autonomousapps.model.AnnotationProcessorDependency
+import com.autonomousapps.model.intermediates.AnnotationProcessorDependency
 import com.autonomousapps.services.InMemoryCache
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.ArtifactCollection

@@ -6,7 +6,7 @@ import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.KotlinMetadataVisitor
 import com.autonomousapps.internal.asm.ClassReader
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.InlineMemberDependency
+import com.autonomousapps.model.intermediates.InlineMemberDependency
 import com.autonomousapps.model.PhysicalArtifact
 import com.autonomousapps.services.InMemoryCache
 import kotlinx.metadata.Flag

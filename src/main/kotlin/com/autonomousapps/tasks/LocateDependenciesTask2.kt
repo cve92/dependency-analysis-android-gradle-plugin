@@ -5,8 +5,8 @@ import com.autonomousapps.internal.NoVariantOutputPaths
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.toIdentifiers
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.Attribute
-import com.autonomousapps.model.Location
+import com.autonomousapps.model.intermediates.Attribute
+import com.autonomousapps.model.intermediates.Location
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ConfigurationContainer

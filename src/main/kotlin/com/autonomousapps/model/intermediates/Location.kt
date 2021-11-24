@@ -1,4 +1,4 @@
-package com.autonomousapps.model
+package com.autonomousapps.model.intermediates
 
 /**
  * A dependency's "location" is the configuration that it's connected to. A dependency may actually

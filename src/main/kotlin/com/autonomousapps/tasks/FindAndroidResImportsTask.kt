@@ -7,7 +7,7 @@ import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.mapNotNullToSet
 import com.autonomousapps.internal.utils.toCoordinates
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.AndroidRes
+import com.autonomousapps.model.intermediates.AndroidRes
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection
