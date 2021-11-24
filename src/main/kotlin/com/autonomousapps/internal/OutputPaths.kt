@@ -47,6 +47,7 @@ internal class OutputPaths(private val project: Project, variantName: String) {
   val adviceConsolePrettyPath = file("${variantDirectory}/advice-console-pretty.json")
   val adviceConsoleTxtPath = file("${variantDirectory}/advice-console.txt")
   val dependenciesDir = dir("${variantDirectory}/dependencies")
+  val explodedSourcePath = file("${intermediatesDir}/exploded-source.json")
 
   /*
    * Graph-related tasks

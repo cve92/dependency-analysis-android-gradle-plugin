@@ -372,8 +372,8 @@ internal class ProjectPlugin(private val project: Project) {
 
   // TODO nice seam for testing new code
   private fun Project.analyzeDependencies(dependencyAnalyzer: DependencyAnalyzer) {
-    analyzeDependencies1(dependencyAnalyzer)
-//    analyzeDependencies2(dependencyAnalyzer)
+//    analyzeDependencies1(dependencyAnalyzer)
+    analyzeDependencies2(dependencyAnalyzer)
   }
 
   /**
@@ -479,10 +479,10 @@ internal class ProjectPlugin(private val project: Project) {
     // TODO BASICALLY RE-DO THE CONSUMER SIDE BY USING GRAPH ANALYSIS INSTEAD OF WHAT WENT BEFORE
 
     // Produces a report that lists all import declarations in the source of the current project.
-    val importFinderTask = tasks.register<ImportFinderTask>("importFinder$variantTaskName") {
+    val explodeSourceTask = tasks.register<CodeSourceExploderTask>("explodeSource$variantTaskName") {
       dependencyAnalyzer.javaSourceFiles?.let { javaSourceFiles.setFrom(it) }
       kotlinSourceFiles.setFrom(dependencyAnalyzer.kotlinSourceFiles)
-      importsReport.set(outputPaths.importsPath)
+      output.set(outputPaths.explodedSourcePath)
     }
 
     // Produces a report that lists all dependencies that contributed constants used by the current project.

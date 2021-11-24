@@ -1,8 +1,6 @@
 package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
-import com.autonomousapps.internal.Imports
-import com.autonomousapps.internal.SourceType
 import com.autonomousapps.internal.antlr.v4.runtime.CharStreams
 import com.autonomousapps.internal.antlr.v4.runtime.CommonTokenStream
 import com.autonomousapps.internal.antlr.v4.runtime.tree.ParseTreeWalker
@@ -10,8 +8,9 @@ import com.autonomousapps.internal.grammar.SimpleBaseListener
 import com.autonomousapps.internal.grammar.SimpleLexer
 import com.autonomousapps.internal.grammar.SimpleParser
 import com.autonomousapps.internal.utils.getAndDelete
-import com.autonomousapps.internal.utils.getLogger
 import com.autonomousapps.internal.utils.toJson
+import com.autonomousapps.model.CodeSource
+import com.autonomousapps.model.Source
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
@@ -26,7 +25,7 @@ import java.io.FileInputStream
 import javax.inject.Inject
 
 @CacheableTask
-abstract class SourceExploderTask @Inject constructor(
+abstract class CodeSourceExploderTask @Inject constructor(
   private val workerExecutor: WorkerExecutor,
   private val layout: ProjectLayout
 ) : DefaultTask() {
@@ -54,37 +53,33 @@ abstract class SourceExploderTask @Inject constructor(
   abstract val output: RegularFileProperty
 
   @TaskAction fun action() {
-    workerExecutor.noIsolation().submit(SourceExploderWorkAction::class.java) {
+    workerExecutor.noIsolation().submit(CodeSourceExploderWorkAction::class.java) {
       projectDir.set(layout.projectDirectory)
-      javaSourceFiles.setFrom(this@SourceExploderTask.javaSourceFiles)
-      kotlinSourceFiles.setFrom(this@SourceExploderTask.kotlinSourceFiles)
-      output.set(this@SourceExploderTask.output)
+      javaSourceFiles.setFrom(this@CodeSourceExploderTask.javaSourceFiles)
+      kotlinSourceFiles.setFrom(this@CodeSourceExploderTask.kotlinSourceFiles)
+      output.set(this@CodeSourceExploderTask.output)
     }
   }
 }
 
-interface SourceExploderParameters : WorkParameters {
+interface CodeSourceExploderParameters : WorkParameters {
   val projectDir: DirectoryProperty
   val javaSourceFiles: ConfigurableFileCollection
   val kotlinSourceFiles: ConfigurableFileCollection
   val output: RegularFileProperty
 }
 
-abstract class SourceExploderWorkAction : WorkAction<SourceExploderParameters> {
-
-  private val logger = getLogger<SourceExploderTask>()
+abstract class CodeSourceExploderWorkAction : WorkAction<CodeSourceExploderParameters> {
 
   override fun execute() {
-    // Output
     val reportFile = parameters.output.getAndDelete()
 
     val explodedSource = SourceExploder(
       projectDir = parameters.projectDir.get().asFile,
       javaSourceFiles = parameters.javaSourceFiles,
       kotlinSourceFiles = parameters.kotlinSourceFiles
-    ).find()
+    ).explode()
 
-    logger.info("Imports: $explodedSource")
     reportFile.writeText(explodedSource.toJson())
   }
 }
@@ -95,20 +90,29 @@ private class SourceExploder(
   private val kotlinSourceFiles: ConfigurableFileCollection
 ) {
 
-  fun find(): Set<Imports> {
-    val javaImports = Imports(
-      SourceType.JAVA, javaSourceFiles.associate { parseSourceFileForImports(it) }
-    )
-    val kotlinImports = Imports(
-      SourceType.KOTLIN, kotlinSourceFiles.associate { parseSourceFileForImports(it) }
-    )
-    return setOf(javaImports, kotlinImports)
+  fun explode(): Set<Source> {
+    val destination = sortedSetOf<Source>()
+    javaSourceFiles.mapTo(destination) {
+      CodeSource(
+        relativePath = it.toRelativeString(projectDir),
+        kind = CodeSource.Kind.JAVA,
+        imports = parseSourceFileForImports(it)
+      )
+    }
+    kotlinSourceFiles.mapTo(destination) {
+      CodeSource(
+        relativePath = it.toRelativeString(projectDir),
+        kind = CodeSource.Kind.KOTLIN,
+        imports = parseSourceFileForImports(it)
+      )
+    }
+    return destination
   }
 
-  private fun parseSourceFileForImports(file: File): Pair<String, Set<String>> {
+  private fun parseSourceFileForImports(file: File): Set<String> {
     val parser = newSimpleParser(file)
     val importListener = walkTree(parser)
-    return file.toRelativeString(projectDir) to importListener.imports()
+    return importListener.imports()
   }
 
   private fun newSimpleParser(file: File): SimpleParser {
