@@ -87,7 +87,7 @@ internal abstract class JvmAnalyzer(
     return project.tasks.register<ClassListExploderTask>("explodeByteCodeSource$variantNameCapitalized") {
       javaCompileTask()?.let { javaClasses.from(it.get().outputs.files.asFileTree) }
       kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
-      output.set(outputPaths.allUsedClassesPath)
+      output.set(outputPaths.explodingBytecodePath)
     }
   }
 
@@ -198,6 +198,16 @@ internal class JavaLibAnalyzer(
       abiDump.set(outputPaths.abiDumpPath)
     }
   }
+
+  override fun registerAbiAnalysisTask2(abiExclusions: Provider<String>): TaskProvider<AbiAnalysisTask2> {
+    return project.tasks.register<AbiAnalysisTask2>("abiAnalysis$variantNameCapitalized") {
+      javaCompileTask()?.let { javaClasses.from(it.get().outputs.files.asFileTree) }
+      kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
+      exclusions.set(abiExclusions)
+      output.set(outputPaths.abiAnalysisPath)
+      abiDump.set(outputPaths.abiDumpPath)
+    }
+  }
 }
 
 internal abstract class KotlinJvmAnalyzer(
@@ -241,6 +251,16 @@ internal class KotlinJvmLibAnalyzer(
       kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
       dependencies.set(analyzeJarTask.flatMap { it.allComponentsReport })
 
+      output.set(outputPaths.abiAnalysisPath)
+      abiDump.set(outputPaths.abiDumpPath)
+    }
+  }
+
+  override fun registerAbiAnalysisTask2(abiExclusions: Provider<String>): TaskProvider<AbiAnalysisTask2> {
+    return project.tasks.register<AbiAnalysisTask2>("abiAnalysis$variantNameCapitalized") {
+      javaCompileTask()?.let { javaClasses.from(it.get().outputs.files.asFileTree) }
+      kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
+      exclusions.set(abiExclusions)
       output.set(outputPaths.abiAnalysisPath)
       abiDump.set(outputPaths.abiDumpPath)
     }

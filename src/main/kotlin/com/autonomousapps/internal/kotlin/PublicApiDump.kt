@@ -114,8 +114,7 @@ fun getBinaryAPI(classStreams: Sequence<InputStream>, visibilityFilter: (String)
             isEffectivelyPublic = isEffectivelyPublic(mVisibility),
             isNotUsedWhenEmpty = metadata.isFileOrMultipartFacade() || isDefaultImpls(metadata),
             annotations = annotations,
-            // TODO toe-hold for filtering by directory
-            sourceFileLocation = null
+            sourceFile = clazz.sourceFile
           )
         }
       }
@@ -131,7 +130,7 @@ internal fun List<ClassBinarySignature>.filterOutNonPublic(
   // Library note - this function (plus the exclusions parameter above) are modified from the original
   // Kotlin sources this was borrowed from.
   fun ClassBinarySignature.isExcluded(): Boolean {
-    return (sourceFileLocation?.let(exclusions::excludesPath) ?: false) ||
+    return (sourceFile?.let(exclusions::excludesPath) ?: false) ||
       exclusions.excludesClass(canonicalName) ||
       annotations.any(exclusions::excludesAnnotation)
   }

@@ -372,8 +372,8 @@ internal class ProjectPlugin(private val project: Project) {
 
   // TODO nice seam for testing new code
   private fun Project.analyzeDependencies(dependencyAnalyzer: DependencyAnalyzer) {
-//    analyzeDependencies1(dependencyAnalyzer)
-    analyzeDependencies2(dependencyAnalyzer)
+   analyzeDependencies1(dependencyAnalyzer)
+    // analyzeDependencies2(dependencyAnalyzer)
   }
 
   /**
@@ -476,8 +476,6 @@ internal class ProjectPlugin(private val project: Project) {
      * Consumer. Start with introspection: what can we say about this project itself?
      */
 
-    // TODO BASICALLY RE-DO THE CONSUMER SIDE BY USING GRAPH ANALYSIS INSTEAD OF WHAT WENT BEFORE
-
     // Lists all import declarations in the source of the current project.
     val explodeCodeSourceTask = tasks.register<CodeSourceExploderTask>("explodeCodeSource$variantTaskName") {
       dependencyAnalyzer.javaSourceFiles?.let { javaSourceFiles.setFrom(it) }
@@ -492,11 +490,28 @@ internal class ProjectPlugin(private val project: Project) {
     // an Android project).
     val explodeXmlSourceTask = dependencyAnalyzer.registerExplodeXmlSourceTask()
 
+    val abiExclusions = provider {
+      // lazy ABI JSON
+      with(getExtension().abiHandler.exclusionsHandler) {
+        AbiExclusions(
+          annotationExclusions = annotationExclusions.get(),
+          classExclusions = classExclusions.get(),
+          pathExclusions = pathExclusions.get()
+        ).toJson()
+      }
+    }
+
+    // Describes the project's binary API, or ABI. Null for application projects.
+    val abiAnalysisTask = dependencyAnalyzer.registerAbiAnalysisTask2(abiExclusions)
+
     /*
      * Producers -> Consumer. Bring it all together. How does this project (consumer) use its dependencies (producers)?
      */
 
-    
+    // TODO "misused dependencies"
+    // TODO advice
+
+
   }
 
   /**

@@ -331,7 +331,7 @@ internal class AndroidAppAnalyzer(
     return project.tasks.register<ClassListExploderTask>("explodeByteCodeSource$variantNameCapitalized") {
       kotlinCompileTask()?.let { kotlinClasses.from(it.get().outputs.files.asFileTree) }
       javaClasses.from(javaCompileTask().get().outputs.files.asFileTree)
-      output.set(outputPaths.allUsedClassesPath)
+      output.set(outputPaths.explodingBytecodePath)
     }
   }
 
@@ -397,15 +397,15 @@ internal class AndroidLibAnalyzer(
   override fun registerByteCodeSourceExploderTask(): TaskProvider<JarExploderTask> {
     return project.tasks.register<JarExploderTask>("explodeByteCodeSource$variantNameCapitalized") {
       jar.set(getBundleTaskOutput())
-      output.set(outputPaths.allUsedClassesPath)
+      output.set(outputPaths.explodingBytecodePath)
     }
   }
 
   override fun registerAbiAnalysisTask(
     analyzeJarTask: TaskProvider<AnalyzeJarTask>,
     abiExclusions: Provider<String>
-  ): TaskProvider<AbiAnalysisTask> =
-    project.tasks.register<AbiAnalysisTask>("abiAnalysis$variantNameCapitalized") {
+  ): TaskProvider<AbiAnalysisTask> {
+    return project.tasks.register<AbiAnalysisTask>("abiAnalysis$variantNameCapitalized") {
       jar.set(getBundleTaskOutput())
       dependencies.set(analyzeJarTask.flatMap { it.allComponentsReport })
       exclusions.set(abiExclusions)
@@ -413,6 +413,16 @@ internal class AndroidLibAnalyzer(
       output.set(outputPaths.abiAnalysisPath)
       abiDump.set(outputPaths.abiDumpPath)
     }
+  }
+
+  override fun registerAbiAnalysisTask2(abiExclusions: Provider<String>): TaskProvider<AbiAnalysisTask2> {
+    return project.tasks.register<AbiAnalysisTask2>("abiAnalysis$variantNameCapitalized") {
+      jar.set(getBundleTaskOutput())
+      exclusions.set(abiExclusions)
+      output.set(outputPaths.abiAnalysisPath)
+      abiDump.set(outputPaths.abiDumpPath)
+    }
+  }
 
   override fun registerFindUnusedProcsTask(
     findDeclaredProcs: TaskProvider<FindDeclaredProcsTask>,

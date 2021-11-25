@@ -96,13 +96,19 @@ internal interface DependencyAnalyzer {
   ): TaskProvider<FindUnusedProcsTask>
 
   /**
-   * This is a no-op for `com.android.application` and JVM `application` projects (including
-   * Spring Boot), since they have no meaningful ABI.
+   * This is a no-op for `com.android.application` and JVM `application` projects (including Spring Boot), since they
+   * have no meaningful ABI.
    */
   fun registerAbiAnalysisTask(
     analyzeJarTask: TaskProvider<AnalyzeJarTask>,
     abiExclusions: Provider<String>
   ): TaskProvider<AbiAnalysisTask>? = null
+
+  /**
+   * This is a no-op for `com.android.application` and JVM `application` projects (including Spring Boot), since they
+   * have no meaningful ABI.
+   */
+  fun registerAbiAnalysisTask2(abiExclusions: Provider<String>): TaskProvider<AbiAnalysisTask2>? = null
 }
 
 internal abstract class AbstractDependencyAnalyzer(
