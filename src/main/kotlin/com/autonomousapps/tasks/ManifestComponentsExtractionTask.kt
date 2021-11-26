@@ -43,7 +43,7 @@ abstract class ManifestComponentsExtractionTask : DefaultTask() {
 
     val manifests: Set<AndroidManifestDependency> = manifestArtifacts.mapNotNullToOrderedSet { manifest ->
       try {
-        val parseResult = parser.parse(manifest.file)
+        val parseResult = parser.parse(manifest.file, true)
         AndroidManifestDependency(
           packageName = parseResult.packageName,
           componentMap = parseResult.components,
