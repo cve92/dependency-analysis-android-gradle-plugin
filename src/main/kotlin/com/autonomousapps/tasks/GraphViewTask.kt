@@ -9,7 +9,6 @@ import com.autonomousapps.internal.utils.toCoordinates
 import com.autonomousapps.internal.utils.toJson
 import com.autonomousapps.model.Coordinates
 import com.autonomousapps.model.DependencyGraphView
-import com.autonomousapps.model.GraphKind
 import com.autonomousapps.model.ProjectCoordinates
 import com.google.common.graph.Graph
 import org.gradle.api.DefaultTask
@@ -22,13 +21,9 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.support.appendReproducibleNewLine
-import org.gradle.workers.WorkerExecutor
-import javax.inject.Inject
 
 @CacheableTask
-abstract class GraphViewTask @Inject constructor(
-  private val workerExecutor: WorkerExecutor
-) : DefaultTask() {
+abstract class GraphViewTask : DefaultTask() {
 
   init {
     group = TASK_GROUP_DEP_INTERNAL
@@ -67,7 +62,7 @@ abstract class GraphViewTask @Inject constructor(
     val graph = GraphViewBuilder(compileClasspath).graph
     val graphView = DependencyGraphView(
       name = variant.get(),
-      kind = GraphKind.COMPILE_TIME,
+      configurationName = compileClasspath.name,
       graph = graph
     )
 

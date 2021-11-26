@@ -9,14 +9,15 @@ import com.google.common.graph.GraphBuilder
 import com.google.common.graph.ImmutableGraph
 
 /**
- * This is a metadata view of a [GraphKind] classpath. It expresses the relationship between the dependencies in the
- * classpath, as a dependency resolution engine (such as Gradle's) understands it. [name] is the Android variant, or the
- * JVM [SourceSet][org.gradle.api.tasks.SourceSet], that it represents.
+ * This is a metadata view of a [configurationName] classpath. It expresses the relationship between the dependencies in
+ * the classpath, as a dependency resolution engine (such as Gradle's) understands it. [name] is the Android variant, or
+ * the JVM [SourceSet][org.gradle.api.tasks.SourceSet], that it represents.
  */
 class DependencyGraphView(
   /** The variant (Android) or source set (JVM) name. */
   val name: String,
-  val kind: GraphKind,
+  /** E.g. `compileClasspath` or `debugRuntimeClasspath`. */
+  val configurationName: String,
   internal val graph: Graph<Coordinates>
 ) {
 
@@ -36,7 +37,7 @@ class DependencyGraphView(
     other as DependencyGraphView
 
     if (name != other.name) return false
-    if (kind != other.kind) return false
+    if (configurationName != other.configurationName) return false
     if (graph != other.graph) return false
 
     return true
@@ -44,13 +45,8 @@ class DependencyGraphView(
 
   override fun hashCode(): Int {
     var result = name.hashCode()
-    result = 31 * result + kind.hashCode()
+    result = 31 * result + configurationName.hashCode()
     result = 31 * result + graph.hashCode()
     return result
   }
-}
-
-enum class GraphKind {
-  COMPILE_TIME,
-  RUNTIME,
 }

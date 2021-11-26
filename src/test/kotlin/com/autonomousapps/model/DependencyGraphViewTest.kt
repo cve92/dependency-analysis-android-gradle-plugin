@@ -13,7 +13,7 @@ internal class DependencyGraphViewTest {
   @Test fun `can serialize and deserialize DependencyGraphViews`() {
     val graphView = DependencyGraphView(
       "main",
-      GraphKind.COMPILE_TIME,
+      "compileClasspath",
       DependencyGraphView.newGraphBuilder()
         .addNode(":secondary:root".toProject())
         .putEdge(":root".toProject(), "foo:bar:1".toModule())
@@ -24,7 +24,7 @@ internal class DependencyGraphViewTest {
     val serialized = graphView.toJson()
     assertThat(serialized).isEqualTo(
       """
-        {"name":"main","kind":"COMPILE_TIME","nodes":[{"type":"project","identifier":":secondary:root"},{"type":"project","identifier":":root"},{"type":"module","identifier":"foo:bar","resolvedVersion":"1"},{"type":"module","identifier":"bar:baz","resolvedVersion":"1"}],"edges":[{"source":{"type":"project","identifier":":root"},"target":{"type":"module","identifier":"foo:bar","resolvedVersion":"1"}},{"source":{"type":"module","identifier":"foo:bar","resolvedVersion":"1"},"target":{"type":"module","identifier":"bar:baz","resolvedVersion":"1"}}]}
+        {"name":"main","configurationName":"compileClasspath","nodes":[{"type":"project","identifier":":secondary:root"},{"type":"project","identifier":":root"},{"type":"module","identifier":"foo:bar","resolvedVersion":"1"},{"type":"module","identifier":"bar:baz","resolvedVersion":"1"}],"edges":[{"source":{"type":"project","identifier":":root"},"target":{"type":"module","identifier":"foo:bar","resolvedVersion":"1"}},{"source":{"type":"module","identifier":"foo:bar","resolvedVersion":"1"},"target":{"type":"module","identifier":"bar:baz","resolvedVersion":"1"}}]}
       """.trimIndent()
     )
 

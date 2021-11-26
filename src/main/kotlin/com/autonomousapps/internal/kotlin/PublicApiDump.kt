@@ -73,16 +73,14 @@ fun getBinaryAPI(classStreams: Sequence<InputStream>, visibilityFilter: (String)
                   val parameterAnnotations = visibleParameterAnnotations.orEmpty()
                     .filterNotNull()
                     .flatMap { annos ->
-                      annos.filterNotNull().mapNotNull { anno ->
-                        anno.desc
-                      }
+                      annos
+                        .filterNotNull()
+                        .mapNotNull { it.desc }
                     }
 
                   val typeAnnotations = visibleTypeAnnotations.orEmpty()
                     .filterNotNull()
-                    .map { anno ->
-                      anno.desc
-                    }
+                    .map { it.desc }
 
                   MethodBinarySignature(
                     jvmMember = JvmMethodSignature(name, desc),

@@ -4,7 +4,6 @@ package com.autonomousapps.internal.utils
 
 import com.autonomousapps.model.Coordinates
 import com.autonomousapps.model.DependencyGraphView
-import com.autonomousapps.model.GraphKind
 import com.google.common.graph.Graph
 import com.squareup.moshi.FromJson
 import com.squareup.moshi.JsonAdapter
@@ -115,7 +114,7 @@ internal class GraphViewAdapter {
   @ToJson fun graphViewToJson(graphView: DependencyGraphView): GraphViewJson {
     return GraphViewJson(
       name = graphView.name,
-      kind = graphView.kind,
+      configurationName = graphView.configurationName,
       nodes = graphView.graph.nodes(),
       edges = graphView.graph.edges().asSequence().map { pair ->
         pair.nodeU() to pair.nodeV()
@@ -126,7 +125,7 @@ internal class GraphViewAdapter {
   @FromJson fun jsonToGraphView(json: GraphViewJson): DependencyGraphView {
     return DependencyGraphView(
       name = json.name,
-      kind = json.kind,
+      configurationName = json.configurationName,
       graph = jsonToGraph(json)
     )
   }
@@ -141,7 +140,7 @@ internal class GraphViewAdapter {
 
   internal data class GraphViewJson(
     val name: String,
-    val kind: GraphKind,
+    val configurationName: String,
     val nodes: Set<Coordinates>,
     val edges: Set<EdgeJson>
   )
