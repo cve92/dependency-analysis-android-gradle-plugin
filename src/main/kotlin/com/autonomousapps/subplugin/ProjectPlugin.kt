@@ -397,7 +397,14 @@ internal class ProjectPlugin(private val project: Project) {
     }
 
     /*
-     * Producers. Find the capabilities of all the producers (dependencies).
+     * Producers. Find the capabilities of all the producers (dependencies). There are many capabilities, including:
+     * 1. Android linters.
+     * 2. Classes and constants.
+     * 3. Inline members from Kotlin libraries.
+     * 4. Android components (e.g. Services and Providers).
+     * etc.
+     *
+     * And then synthesize the above.
      */
 
     // A report of all dependencies that supply Android linters on the compile classpath.
@@ -473,7 +480,13 @@ internal class ProjectPlugin(private val project: Project) {
     }
 
     /*
-     * Consumer. Start with introspection: what can we say about this project itself?
+     * Consumer. Start with introspection: what can we say about this project itself? There are several elements:
+     * 1. Source code analysis (the only way to see types used as generic types).
+     * 2. Bytecode analysis -- all classes used by our class files.
+     * 3. Bytecode analysis -- all classes exposed as the ABI.
+     * 4. Android resource analysis -- look for class references and Android resource symbols and IDs.
+     *
+     * And then synthesize the above.
      */
 
     // Lists all import declarations in the source of the current project.
@@ -490,7 +503,8 @@ internal class ProjectPlugin(private val project: Project) {
     // an Android project).
     val explodeXmlSourceTask = dependencyAnalyzer.registerExplodeXmlSourceTask()
 
-    val abiExclusions = provider {
+    // Describes the project's binary API, or ABI. Null for application projects.
+    val abiAnalysisTask = dependencyAnalyzer.registerAbiAnalysisTask2(provider {
       // lazy ABI JSON
       with(getExtension().abiHandler.exclusionsHandler) {
         AbiExclusions(
@@ -499,10 +513,7 @@ internal class ProjectPlugin(private val project: Project) {
           pathExclusions = pathExclusions.get()
         ).toJson()
       }
-    }
-
-    // Describes the project's binary API, or ABI. Null for application projects.
-    val abiAnalysisTask = dependencyAnalyzer.registerAbiAnalysisTask2(abiExclusions)
+    })
 
     /*
      * Producers -> Consumer. Bring it all together. How does this project (consumer) use its dependencies (producers)?
