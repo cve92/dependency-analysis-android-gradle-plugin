@@ -1,6 +1,6 @@
 package com.autonomousapps.model.intermediates
 
-internal data class ExplodingByteCode(
+internal data class ExplodingBytecode(
   val relativePath: String,
   val className: String,
   val sourceFile: String?,

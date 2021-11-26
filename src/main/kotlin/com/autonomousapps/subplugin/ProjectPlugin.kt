@@ -372,7 +372,7 @@ internal class ProjectPlugin(private val project: Project) {
 
   // TODO nice seam for testing new code
   private fun Project.analyzeDependencies(dependencyAnalyzer: DependencyAnalyzer) {
-   analyzeDependencies1(dependencyAnalyzer)
+    analyzeDependencies1(dependencyAnalyzer)
     // analyzeDependencies2(dependencyAnalyzer)
   }
 
@@ -381,12 +381,15 @@ internal class ProjectPlugin(private val project: Project) {
    * set, or Java source set.
    */
   private fun Project.analyzeDependencies2(dependencyAnalyzer: DependencyAnalyzer) {
-    val flavorName: String? = dependencyAnalyzer.flavorName
     val variantName = dependencyAnalyzer.variantName
     val variantTaskName = dependencyAnalyzer.variantNameCapitalized
     val outputPaths = OutputPaths(this, variantName)
 
-    // Produces a report of the dependencies required to build the project, along with their physical artifacts (jars).
+    /*
+     * Metadata about the dependency graph.
+     */
+
+    // Lists the dependencies required to build the project, along with their physical artifacts (jars).
     val artifactsReportTask = tasks.register<ArtifactsReportTask2>("artifactsReport$variantTaskName") {
       setCompileClasspath(
         configurations[dependencyAnalyzer.compileConfigurationName].artifactsFor(dependencyAnalyzer.attributeValueJar)
@@ -394,6 +397,15 @@ internal class ProjectPlugin(private val project: Project) {
 
       output.set(outputPaths.artifactsPath)
       outputPretty.set(outputPaths.artifactsPrettyPath)
+    }
+
+    // Produce a DAG of the compile classpath rooted on this project.
+    val graphViewTask = tasks.register<GraphViewTask>("graphView$variantTaskName") {
+      setCompileClasspath(configurations[dependencyAnalyzer.compileConfigurationName])
+      jarAttr.set(dependencyAnalyzer.attributeValueJar)
+      variant.set(variantName)
+      output.set(outputPaths.compileGraphPath)
+      outputDot.set(outputPaths.compileGraphDotPath)
     }
 
     /*
@@ -456,28 +468,21 @@ internal class ProjectPlugin(private val project: Project) {
     // A report of declared annotation processors.
     val declaredProcsTask = dependencyAnalyzer.registerFindDeclaredProcsTask(inMemoryCacheProvider)
 
-    tasks.register<SynthesizeDependenciesTask>("synthesizeDependencies$variantTaskName") {
-      inMemoryCache.set(inMemoryCacheProvider)
-      physicalArtifacts.set(artifactsReportTask.flatMap { it.output })
-      explodedJars.set(explodeJarTask.flatMap { it.output })
-      inlineMembers.set(inlineTask.flatMap { it.output })
-      serviceLoaders.set(findServiceLoadersTask.flatMap { it.output })
-      annotationProcessors.set(declaredProcsTask.flatMap { it.output })
-      // Optional Android-only inputs
-      androidManifestTask?.let { task -> manifestComponents.set(task.flatMap { it.output }) }
-      findAndroidResTask?.let { task -> androidRes.set(task.flatMap { it.output }) }
-      findNativeLibsTask?.let { task -> nativeLibs.set(task.flatMap { it.output }) }
+    val synthesizeDependenciesTask =
+      tasks.register<SynthesizeDependenciesTask>("synthesizeDependencies$variantTaskName") {
+        inMemoryCache.set(inMemoryCacheProvider)
+        physicalArtifacts.set(artifactsReportTask.flatMap { it.output })
+        explodedJars.set(explodeJarTask.flatMap { it.output })
+        inlineMembers.set(inlineTask.flatMap { it.output })
+        serviceLoaders.set(findServiceLoadersTask.flatMap { it.output })
+        annotationProcessors.set(declaredProcsTask.flatMap { it.output })
+        // Optional Android-only inputs
+        androidManifestTask?.let { task -> manifestComponents.set(task.flatMap { it.output }) }
+        findAndroidResTask?.let { task -> androidRes.set(task.flatMap { it.output }) }
+        findNativeLibsTask?.let { task -> nativeLibs.set(task.flatMap { it.output }) }
 
-      outputDir.set(outputPaths.dependenciesDir)
-    }
-
-    tasks.register<GraphViewTask>("graphView$variantTaskName") {
-      setCompileClasspath(configurations[dependencyAnalyzer.compileConfigurationName])
-      jarAttr.set(dependencyAnalyzer.attributeValueJar)
-      variant.set(variantName)
-      output.set(outputPaths.compileGraphPath)
-      outputDot.set(outputPaths.compileGraphDotPath)
-    }
+        outputDir.set(outputPaths.dependenciesDir)
+      }
 
     /*
      * Consumer. Start with introspection: what can we say about this project itself? There are several elements:
@@ -497,7 +502,7 @@ internal class ProjectPlugin(private val project: Project) {
     }
 
     // Lists all classes _used by_ the given project. Analyzes bytecode and collects all class references.
-    val explodeByteCodeTask = dependencyAnalyzer.registerByteCodeSourceExploderTask()
+    val explodeBytecodeTask = dependencyAnalyzer.registerByteCodeSourceExploderTask()
 
     // Lists all possibly-external XML resources referenced by this project's Android resources (or null if this isn't
     // an Android project).
@@ -514,6 +519,16 @@ internal class ProjectPlugin(private val project: Project) {
         ).toJson()
       }
     })
+
+    // Synthesizes the above into a single view of this project's usages.
+    val synthesizeProjectViewTask = tasks.register<SynthesizeProjectViewTask>("synthesizeProjectView$variantTaskName") {
+      explodedBytecode.set(explodeBytecodeTask.flatMap { it.output })
+      explodedSourceCode.set(explodeCodeSourceTask.flatMap { it.output })
+      // Optional: only exists for libraries.
+      abiAnalysisTask?.let { t -> explodingAbi.set(t.flatMap { it.output }) }
+      // Optional: only exists for Android libraries.
+      explodeXmlSourceTask?.let { t -> androidResSource.set(t.flatMap { it.output }) }
+    }
 
     /*
      * Producers -> Consumer. Bring it all together. How does this project (consumer) use its dependencies (producers)?

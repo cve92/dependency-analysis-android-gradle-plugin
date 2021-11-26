@@ -4,7 +4,7 @@ import com.autonomousapps.internal.asm.ClassReader
 import com.autonomousapps.internal.utils.JAVA_FQCN_REGEX_SLASHY
 import com.autonomousapps.internal.utils.asClassFiles
 import com.autonomousapps.internal.utils.getLogger
-import com.autonomousapps.model.intermediates.ExplodingByteCode
+import com.autonomousapps.model.intermediates.ExplodingBytecode
 import org.gradle.api.logging.Logger
 import java.io.File
 import java.util.zip.ZipFile
@@ -12,14 +12,14 @@ import java.util.zip.ZipFile
 internal sealed class ClassReferenceParser2(private val buildDir: File) {
 
   /** Source is either a jar or set of class files. */
-  protected abstract fun parseBytecode(): Set<ExplodingByteCode>
+  protected abstract fun parseBytecode(): Set<ExplodingBytecode>
 
   protected fun relativize(file: File) = file.toRelativeString(buildDir)
 
   // TODO some jars only have metadata. What to do about them?
   // 1. e.g. kotlin-stdlib-common-1.3.50.jar
   // 2. e.g. legacy-support-v4-1.0.0/jars/classes.jar
-  internal fun analyze(): Set<ExplodingByteCode> {
+  internal fun analyze(): Set<ExplodingBytecode> {
     return parseBytecode()
   }
 }
@@ -34,14 +34,14 @@ internal class JarParser(
   private val logger = getLogger<JarReader>()
   private val zipFile = ZipFile(jarFile)
 
-  override fun parseBytecode(): Set<ExplodingByteCode> {
+  override fun parseBytecode(): Set<ExplodingBytecode> {
     return zipFile.asClassFiles()
       .map { classEntry ->
         val explodedClass = zipFile.getInputStream(classEntry).use {
           BytecodeReader(it.readBytes(), logger).parse()
         }
 
-        ExplodingByteCode(
+        ExplodingBytecode(
           relativePath = classEntry.name,
           className = explodedClass.className,
           sourceFile = explodedClass.source,
@@ -59,13 +59,13 @@ internal class ClassFilesParser(
 
   private val logger = getLogger<ClassFilesParser>()
 
-  override fun parseBytecode(): Set<ExplodingByteCode> {
+  override fun parseBytecode(): Set<ExplodingBytecode> {
     return classes.map { classFile ->
       val explodedClass = classFile.inputStream().use {
         BytecodeReader(it.readBytes(), logger).parse()
       }
 
-      ExplodingByteCode(
+      ExplodingBytecode(
         relativePath = relativize(classFile),
         className = explodedClass.className,
         sourceFile = explodedClass.source,

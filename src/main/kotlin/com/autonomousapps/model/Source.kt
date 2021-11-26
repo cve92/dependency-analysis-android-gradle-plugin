@@ -12,10 +12,10 @@ sealed class Source(
   override fun compareTo(other: Source): Int = when (this) {
     is RawCodeSource -> if (other !is RawCodeSource) 1 else defaultCompareTo(other)
     is AndroidResSource -> if (other !is AndroidResSource) -1 else defaultCompareTo(other)
-    is ByteCodeSource -> {
+    is BytecodeSource -> {
       when (other) {
         is RawCodeSource -> -1
-        !is ByteCodeSource -> 1
+        !is BytecodeSource -> 1
         else -> defaultCompareTo(other)
       }
     }
@@ -42,7 +42,7 @@ data class RawCodeSource(
 /** A single `.class` file in this project. */
 @TypeLabel("bytecode")
 @JsonClass(generateAdapter = false)
-data class ByteCodeSource(
+data class BytecodeSource(
   override val relativePath: String,
   val className: String,
   val source: String?,
