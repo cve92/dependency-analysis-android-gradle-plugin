@@ -139,7 +139,7 @@ abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenc
 
     // Write every dependency to its own file in the output directory
     builders.values.asSequence()
-      .map { it.toDependency() }
+      .map { it.build() }
       .forEach { dependency ->
         outputDir.file(dependency.coordinates.toFileName()).get().asFile.writeText(dependency.toJson())
       }
@@ -167,7 +167,7 @@ private class DependencyBuilder(val coordinates: Coordinates) {
     return this
   }
 
-  fun toDependency(): Dependency {
+  fun build(): Dependency {
     val file = checkNotNull(file) { "'file' must not be null" }
     val capabilities = capabilities.sorted()
 

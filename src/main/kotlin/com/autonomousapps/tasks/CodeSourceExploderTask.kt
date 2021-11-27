@@ -21,6 +21,7 @@ import org.gradle.workers.WorkParameters
 import org.gradle.workers.WorkerExecutor
 import java.io.File
 import java.io.FileInputStream
+import java.nio.file.Paths
 import javax.inject.Inject
 
 @CacheableTask
@@ -54,8 +55,8 @@ abstract class CodeSourceExploderTask @Inject constructor(
   @TaskAction fun action() {
     workerExecutor.noIsolation().submit(CodeSourceExploderWorkAction::class.java) {
       projectDir.set(layout.projectDirectory)
-      javaSourceFiles.setFrom(this@CodeSourceExploderTask.javaSourceFiles)
-      kotlinSourceFiles.setFrom(this@CodeSourceExploderTask.kotlinSourceFiles)
+      javaSourceFiles.from(this@CodeSourceExploderTask.javaSourceFiles)
+      kotlinSourceFiles.from(this@CodeSourceExploderTask.kotlinSourceFiles)
       output.set(this@CodeSourceExploderTask.output)
     }
   }
@@ -92,15 +93,19 @@ private class SourceExploder(
   fun explode(): Set<RawCodeSource> {
     val destination = sortedSetOf<RawCodeSource>()
     javaSourceFiles.mapTo(destination) {
+      val rel = relativize(it)
       RawCodeSource(
-        relativePath = relativize(it),
+        relativePath = rel,
+        className = canonicalClassName(rel),
         kind = RawCodeSource.Kind.JAVA,
         imports = parseSourceFileForImports(it)
       )
     }
     kotlinSourceFiles.mapTo(destination) {
+      val rel = relativize(it)
       RawCodeSource(
-        relativePath = relativize(it),
+        relativePath = rel,
+        className = canonicalClassName(rel),
         kind = RawCodeSource.Kind.KOTLIN,
         imports = parseSourceFileForImports(it)
       )
@@ -109,6 +114,16 @@ private class SourceExploder(
   }
 
   private fun relativize(file: File) = file.toRelativeString(projectDir)
+
+  private fun canonicalClassName(relativePath: String): String {
+    return Paths.get(relativePath)
+      // Hack to drop e.g. `src/main/java`. Would be better if a FileTree exposed that info.
+      .drop(3)
+      // com/example/Foo.java -> com.example.Foo.java
+      .joinToString(separator = ".")
+      // Drop file extension (.java, .kt, etc.) as well.
+      .substringBeforeLast('.')
+  }
 
   private fun parseSourceFileForImports(file: File): Set<String> {
     val parser = newSimpleParser(file)

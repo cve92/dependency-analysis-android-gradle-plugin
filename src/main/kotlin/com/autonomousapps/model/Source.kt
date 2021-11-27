@@ -29,6 +29,8 @@ sealed class Source(
 @JsonClass(generateAdapter = false)
 data class RawCodeSource(
   override val relativePath: String,
+  /** E.g., `com/example/Foo.java` */
+  val className: String,
   val kind: Kind,
   val imports: Set<String>
 ) : Source(relativePath) {
@@ -45,11 +47,13 @@ data class RawCodeSource(
 data class BytecodeSource(
   override val relativePath: String,
   val className: String,
-  val source: String?,
-  val usedClasses: Set<String>
+  /** Every class discovered in the bytecode of [className]. */
+  val usedClasses: Set<String>,
+  /** Every class discovered in the bytecode of [className], and which is exposed as part of the ABI. */
+  val exposedClasses: Set<String>
 ) : Source(relativePath)
 
-/** A single XML file in this project. */
+/** A single `.xml` (Android resource) file in this project. */
 @TypeLabel("android_res")
 @JsonClass(generateAdapter = false)
 data class AndroidResSource(

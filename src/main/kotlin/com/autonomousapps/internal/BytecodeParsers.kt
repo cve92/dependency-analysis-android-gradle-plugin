@@ -43,7 +43,7 @@ internal class JarParser(
 
         ExplodingBytecode(
           relativePath = classEntry.name,
-          className = explodedClass.className,
+          className = explodedClass.className.replace('/', '.'),
           sourceFile = explodedClass.source,
           usedClasses = explodedClass.usedClasses
         )
@@ -67,7 +67,7 @@ internal class ClassFilesParser(
 
       ExplodingBytecode(
         relativePath = relativize(classFile),
-        className = explodedClass.className,
+        className = explodedClass.className.replace('/', '.'),
         sourceFile = explodedClass.source,
         usedClasses = explodedClass.usedClasses,
       )

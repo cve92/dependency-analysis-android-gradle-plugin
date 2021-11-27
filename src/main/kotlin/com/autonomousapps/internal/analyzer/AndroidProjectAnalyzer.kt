@@ -45,8 +45,8 @@ internal abstract class AndroidAnalyzer(
   final override val variantNameCapitalized: String = variantName.capitalizeSafely()
   final override val compileConfigurationName = "${variantName}CompileClasspath"
   final override val testCompileConfigurationName = "${variantName}UnitTestCompileClasspath"
-  final override val kotlinSourceFiles: FileTree = getKotlinSources()
-  final override val javaSourceFiles: FileTree = getJavaSources()
+  final override val kotlinSourceFiles: FileTree = getKotlinSources()//kotlinSource()//
+  final override val javaSourceFiles: FileTree = getJavaSources()//javaSource()//
   final override val javaAndKotlinSourceFiles: FileTree = getJavaAndKotlinSources()
 
   // TODO looks like this will break with AGP >4. Seriously, check this against 7+
@@ -227,6 +227,26 @@ internal abstract class AndroidAnalyzer(
   } catch (_: UnknownDomainObjectException) {
     null
   }
+
+  private fun javaSource(): FileTree = source().matching {
+    include("**/*.java")
+    exclude("**/*.kt")
+  }
+
+  private fun kotlinSource(): FileTree = source().matching {
+    include("**/*.kt")
+    exclude("**/*.java")
+  }
+
+  private fun javaAndKotlinSource(): FileTree = source().matching {
+    include("**/*.java")
+    include("**/*.kt")
+  }
+
+  private fun source(): FileTree = variant.sourceSets
+    .flatMap { it.javaDirectories }
+    .map { project.fileTree(it) }
+    .reduce(FileTree::plus)
 
   private fun getKotlinSources(): FileTree = getSourceDirectories().asFileTree.matching {
     include("**/*.kt")

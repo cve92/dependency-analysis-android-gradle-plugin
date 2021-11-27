@@ -3,9 +3,10 @@ package com.autonomousapps.model
 /**
  * TODO: not sure this API makes any sense
  */
-class ProjectVariant(
+data class ProjectVariant(
+  val variant: String,
   val sources: List<Source>,
-  val dependencies: DependencyGraph
+  val classpath: Set<Coordinates>
 ) {
 
 }

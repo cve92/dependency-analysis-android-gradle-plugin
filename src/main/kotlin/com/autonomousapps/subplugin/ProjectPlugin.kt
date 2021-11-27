@@ -372,8 +372,8 @@ internal class ProjectPlugin(private val project: Project) {
 
   // TODO nice seam for testing new code
   private fun Project.analyzeDependencies(dependencyAnalyzer: DependencyAnalyzer) {
-    analyzeDependencies1(dependencyAnalyzer)
-    // analyzeDependencies2(dependencyAnalyzer)
+    // analyzeDependencies1(dependencyAnalyzer)
+    analyzeDependencies2(dependencyAnalyzer)
   }
 
   /**
@@ -522,12 +522,15 @@ internal class ProjectPlugin(private val project: Project) {
 
     // Synthesizes the above into a single view of this project's usages.
     val synthesizeProjectViewTask = tasks.register<SynthesizeProjectViewTask>("synthesizeProjectView$variantTaskName") {
+      variant.set(variantName)
+      graph.set(graphViewTask.flatMap { it.output })
       explodedBytecode.set(explodeBytecodeTask.flatMap { it.output })
       explodedSourceCode.set(explodeCodeSourceTask.flatMap { it.output })
       // Optional: only exists for libraries.
       abiAnalysisTask?.let { t -> explodingAbi.set(t.flatMap { it.output }) }
       // Optional: only exists for Android libraries.
       explodeXmlSourceTask?.let { t -> androidResSource.set(t.flatMap { it.output }) }
+      output.set(outputPaths.syntheticProject)
     }
 
     /*
