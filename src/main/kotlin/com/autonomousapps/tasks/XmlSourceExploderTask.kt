@@ -8,6 +8,7 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.tasks.*
 import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
@@ -38,7 +39,8 @@ import javax.inject.Inject
 @CacheableTask
 abstract class XmlSourceExploderTask @Inject constructor(
   private val workerExecutor: WorkerExecutor,
-  private val layout: ProjectLayout
+  private val layout: ProjectLayout,
+  private val objects: ObjectFactory
 ) : DefaultTask() {
 
   init {
@@ -50,13 +52,37 @@ abstract class XmlSourceExploderTask @Inject constructor(
   @get:InputFiles
   abstract val androidLocalRes: ConfigurableFileCollection
 
+  /**
+   * Android layout XML files.
+   */
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  @get:InputFiles
+  abstract val layoutFiles: ConfigurableFileCollection
+
   @get:OutputFile
   abstract val output: RegularFileProperty
+
+  internal fun layouts(files: List<File>) {
+    for (file in files) {
+      layoutFiles.from(
+        objects.fileTree().from(file)
+          .matching {
+            // At this point in the filtering, there's a mix of directories and files
+            // Can't filter on file extension
+            include { it.path.contains("layout") }
+          }.files
+          // At this point, we have only files. It is safe to filter on extension. We
+          // only want XML files.
+          .filter { it.extension == "xml" }
+      )
+    }
+  }
 
   @TaskAction fun action() {
     workerExecutor.noIsolation().submit(XmlSourceExploderWorkAction::class.java) {
       projectDir.set(layout.projectDirectory)
-      xml.setFrom(androidLocalRes)
+      androidRes.setFrom(androidLocalRes)
+      layouts.setFrom(layoutFiles)
       output.set(this@XmlSourceExploderTask.output)
     }
   }
@@ -64,21 +90,76 @@ abstract class XmlSourceExploderTask @Inject constructor(
 
 interface XmlSourceExploderParameters : WorkParameters {
   val projectDir: DirectoryProperty
-  val xml: ConfigurableFileCollection
+  val androidRes: ConfigurableFileCollection
+  val layouts: ConfigurableFileCollection
   val output: RegularFileProperty
 }
 
 abstract class XmlSourceExploderWorkAction : WorkAction<XmlSourceExploderParameters> {
 
+  private val builders = mutableMapOf<String, AndroidResBuilder>()
+
   override fun execute() {
     val output = parameters.output.getAndDelete()
 
-    val androidResSource = AndroidResParser(
-      parameters.projectDir.get().asFile,
-      parameters.xml
+    val projectDir = parameters.projectDir.get().asFile
+    val explodedLayouts = AndroidLayoutParser(
+      projectDir,
+      parameters.layouts.files
+    ).explodedLayouts
+    val explodedResources = AndroidResParser(
+      projectDir,
+      parameters.androidRes
     ).androidResSource
 
+    explodedLayouts.forEach { explodedLayout ->
+      builders.merge(
+        explodedLayout.relativePath,
+        AndroidResBuilder(explodedLayout.relativePath).apply {
+          usedClasses.addAll(explodedLayout.usedClasses)
+        },
+        AndroidResBuilder::concat
+      )
+    }
+    explodedResources.forEach { explodedRes ->
+      builders.merge(
+        explodedRes.relativePath,
+        AndroidResBuilder(explodedRes.relativePath).apply {
+          styleParentRefs.addAll(explodedRes.styleParentRefs)
+          attrRefs.addAll(explodedRes.attrRefs)
+        },
+        AndroidResBuilder::concat
+      )
+    }
+
+    val androidResSource = builders.values.asSequence()
+      .map { it.build() }
+      .toSet()
+
     output.writeText(androidResSource.toJson())
+  }
+}
+
+private class AndroidLayoutParser(
+  private val projectDir: File,
+  private val layouts: Set<File>
+) {
+
+  val explodedLayouts: Set<ExplodedLayout> = parseLayouts()
+
+  private fun parseLayouts(): Set<ExplodedLayout> {
+    return layouts.asSequence()
+      .map { layoutFile ->
+        layoutFile to buildDocument(layoutFile).getElementsByTagName("*")
+          .map { it.nodeName }
+          .filterToOrderedSet { JAVA_FQCN_REGEX_DOTTY.matches(it) }
+      }.map { (file, classes) ->
+        ExplodedLayout(
+          relativePath = file.toRelativeString(projectDir),
+          usedClasses = classes
+        )
+      }
+      .toSet()
   }
 }
 
@@ -87,10 +168,10 @@ private class AndroidResParser(
   resources: Iterable<File>
 ) {
 
-  val androidResSource: Set<AndroidResSource> = resources
+  val androidResSource: Set<ExplodedRes> = resources
     .map { it to buildDocument(it) }
-    .mapToOrderedSet { (file, doc) ->
-      AndroidResSource(
+    .mapToSet { (file, doc) ->
+      ExplodedRes(
         relativePath = file.toRelativeString(projectDir),
         styleParentRefs = extractStyleParentsFromResourceXml(doc),
         attrRefs = extractAttrsFromResourceXml(doc)
@@ -112,3 +193,37 @@ private class AndroidResParser(
     return doc.attrs().entries.mapNotNullToSet { AndroidResSource.AttrRef.from(it) }
   }
 }
+
+private class AndroidResBuilder(private val relativePath: String) {
+
+  val styleParentRefs = mutableSetOf<AndroidResSource.StyleParentRef>()
+  val attrRefs = mutableSetOf<AndroidResSource.AttrRef>()
+  val usedClasses = mutableSetOf<String>()
+
+  fun concat(other: AndroidResBuilder): AndroidResBuilder {
+    styleParentRefs.addAll(other.styleParentRefs)
+    attrRefs.addAll(other.attrRefs)
+    usedClasses.addAll(other.usedClasses)
+    return this
+  }
+
+  fun build(): AndroidResSource {
+    return AndroidResSource(
+      relativePath = relativePath,
+      styleParentRefs = styleParentRefs,
+      attrRefs = attrRefs,
+      usedClasses = usedClasses
+    )
+  }
+}
+
+private class ExplodedLayout(
+  val relativePath: String,
+  val usedClasses: Set<String>
+)
+
+private class ExplodedRes(
+  val relativePath: String,
+  val styleParentRefs: Set<AndroidResSource.StyleParentRef>,
+  val attrRefs: Set<AndroidResSource.AttrRef>
+)

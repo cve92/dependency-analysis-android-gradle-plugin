@@ -9,7 +9,8 @@ import com.autonomousapps.internal.grammar.SimpleLexer
 import com.autonomousapps.internal.grammar.SimpleParser
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.RawCodeSource
+import com.autonomousapps.model.intermediates.ExplodingSourceCode
+import com.autonomousapps.model.intermediates.ExplodingSourceCode.Kind
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
@@ -90,23 +91,23 @@ private class SourceExploder(
   private val kotlinSourceFiles: ConfigurableFileCollection
 ) {
 
-  fun explode(): Set<RawCodeSource> {
-    val destination = sortedSetOf<RawCodeSource>()
+  fun explode(): Set<ExplodingSourceCode> {
+    val destination = sortedSetOf<ExplodingSourceCode>()
     javaSourceFiles.mapTo(destination) {
       val rel = relativize(it)
-      RawCodeSource(
+      ExplodingSourceCode(
         relativePath = rel,
         className = canonicalClassName(rel),
-        kind = RawCodeSource.Kind.JAVA,
+        kind = Kind.JAVA,
         imports = parseSourceFileForImports(it)
       )
     }
     kotlinSourceFiles.mapTo(destination) {
       val rel = relativize(it)
-      RawCodeSource(
+      ExplodingSourceCode(
         relativePath = rel,
         className = canonicalClassName(rel),
-        kind = RawCodeSource.Kind.KOTLIN,
+        kind = Kind.KOTLIN,
         imports = parseSourceFileForImports(it)
       )
     }

@@ -2,9 +2,13 @@ package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.*
+import com.autonomousapps.model.AndroidResSource
+import com.autonomousapps.model.CodeSource
+import com.autonomousapps.model.DependencyGraphView
+import com.autonomousapps.model.ProjectVariant
 import com.autonomousapps.model.intermediates.ExplodingAbi
 import com.autonomousapps.model.intermediates.ExplodingBytecode
+import com.autonomousapps.model.intermediates.ExplodingSourceCode
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
@@ -37,7 +41,7 @@ abstract class SynthesizeProjectViewTask @Inject constructor(
   @get:InputFile
   abstract val explodedBytecode: RegularFileProperty
 
-  /** [`Set<RawCodeSource>`][RawCodeSource] */
+  /** [`Set<ExplodingSourceCode>`][ExplodingSourceCode] */
   @get:PathSensitive(PathSensitivity.NONE)
   @get:InputFile
   abstract val explodedSourceCode: RegularFileProperty
@@ -85,7 +89,7 @@ interface SynthesizeProjectViewParameters : WorkParameters {
 
 abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectViewParameters> {
 
-  private val builders = sortedMapOf<String, BytecodeSourceBuilder>()
+  private val builders = sortedMapOf<String, CodeSourceBuilder>()
 
   override fun execute() {
     val output = parameters.output.getAndDelete()
@@ -93,46 +97,46 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
     val graph = parameters.graph.fromJson<DependencyGraphView>()
     val explodedBytecode = parameters.explodedBytecode.fromJsonSet<ExplodingBytecode>()
     val explodingAbi = parameters.explodingAbi.fromNullableJsonSet<ExplodingAbi>().orEmpty()
-    val explodedSourceCode = parameters.explodedSourceCode.fromJsonSet<RawCodeSource>()
+    val explodedSourceCode = parameters.explodedSourceCode.fromJsonSet<ExplodingSourceCode>()
     val androidResSource = parameters.androidResSource.fromNullableJsonSet<AndroidResSource>().orEmpty()
 
     explodedBytecode.forEach { bytecode ->
       builders.merge(
         bytecode.className,
-        BytecodeSourceBuilder(bytecode.className).apply {
+        CodeSourceBuilder(bytecode.className).apply {
           relativePath = bytecode.relativePath
           usedClasses.addAll(bytecode.usedClasses)
         },
-        BytecodeSourceBuilder::concat
+        CodeSourceBuilder::concat
       )
     }
     explodingAbi.forEach { abi ->
       builders.merge(
         abi.className,
-        BytecodeSourceBuilder(abi.className).apply {
+        CodeSourceBuilder(abi.className).apply {
           exposedClasses.addAll(abi.exposedClasses)
         },
-        BytecodeSourceBuilder::concat
+        CodeSourceBuilder::concat
       )
     }
     explodedSourceCode.forEach { source ->
       builders.merge(
         source.className,
-        BytecodeSourceBuilder(source.className).apply {
+        CodeSourceBuilder(source.className).apply {
           imports.addAll(source.imports)
         },
-        BytecodeSourceBuilder::concat
+        CodeSourceBuilder::concat
       )
     }
 
-    val bytecodeSource = builders.values.asSequence()
+    val codeSource = builders.values.asSequence()
       .map { it.build() }
       .toSet()
 
     @Suppress("UnstableApiUsage") // Guava Graph
     val projectVariant = ProjectVariant(
       variant = parameters.variant.get(),
-      sources = (bytecodeSource + androidResSource).toList(),
+      sources = (codeSource + androidResSource).toList(),
       classpath = graph.graph.nodes()
     )
 
@@ -140,14 +144,14 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
   }
 }
 
-private class BytecodeSourceBuilder(val className: String) {
+private class CodeSourceBuilder(val className: String) {
 
   var relativePath: String? = null
   val usedClasses = mutableSetOf<String>()
   val exposedClasses = mutableSetOf<String>()
   val imports = mutableSetOf<String>()
 
-  fun concat(other: BytecodeSourceBuilder): BytecodeSourceBuilder {
+  fun concat(other: CodeSourceBuilder): CodeSourceBuilder {
     usedClasses.addAll(other.usedClasses)
     exposedClasses.addAll(other.exposedClasses)
     imports.addAll(other.imports)
@@ -155,9 +159,9 @@ private class BytecodeSourceBuilder(val className: String) {
     return this
   }
 
-  fun build(): BytecodeSource {
+  fun build(): CodeSource {
     val relativePath = checkNotNull(relativePath) { "'relativePath' must not be null" }
-    return BytecodeSource(
+    return CodeSource(
       relativePath = relativePath,
       className = className,
       usedClasses = usedClasses,

@@ -9,4 +9,9 @@ data class ProjectVariant(
   val classpath: Set<Coordinates>
 ) {
 
+  val usedClasses by lazy {
+    sources.filterIsInstance<CodeSource>().flatMap {
+      it.usedClasses
+    }
+  }
 }

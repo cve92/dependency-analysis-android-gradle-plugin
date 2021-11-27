@@ -108,16 +108,10 @@ internal abstract class AndroidAnalyzer(
       "findAndroidResByResUsage$variantNameCapitalized"
     ) {
       setAndroidPublicRes(
-        project.configurations[compileConfigurationName]
-          .incoming
-          .artifactViewFor("android-public-res")
-          .artifacts
+        project.configurations[compileConfigurationName].artifactsFor("android-public-res")
       )
       setAndroidSymbols(
-        project.configurations[compileConfigurationName]
-          .incoming
-          .artifactViewFor("android-symbol-with-package-name")
-          .artifacts
+        project.configurations[compileConfigurationName].artifactsFor("android-symbol-with-package-name")
       )
 
       androidLocalRes.setFrom(getAndroidRes())
@@ -143,6 +137,7 @@ internal abstract class AndroidAnalyzer(
   override fun registerExplodeXmlSourceTask(): TaskProvider<XmlSourceExploderTask> {
     return project.tasks.register<XmlSourceExploderTask>("explodeXmlSource$variantNameCapitalized") {
       androidLocalRes.setFrom(getAndroidRes())
+      layouts(variant.sourceSets.flatMap { it.resDirectories })
       output.set(outputPaths.androidResToResUsagePath)
     }
   }

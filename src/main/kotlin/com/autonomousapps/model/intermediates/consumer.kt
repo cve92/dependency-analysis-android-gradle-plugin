@@ -1,11 +1,14 @@
 package com.autonomousapps.model.intermediates
 
+/** A single source file (e.g., `.java`, `.kt`) in this project. */
 internal data class ExplodingSourceCode(
   val relativePath: String,
   val className: String,
   val kind: Kind,
   val imports: Set<String>
-) {
+) : Comparable<ExplodingSourceCode> {
+
+  override fun compareTo(other: ExplodingSourceCode): Int = relativePath.compareTo(other.relativePath)
 
   enum class Kind {
     JAVA,

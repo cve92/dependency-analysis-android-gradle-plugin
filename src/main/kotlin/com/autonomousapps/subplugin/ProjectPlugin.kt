@@ -675,8 +675,7 @@ internal class ProjectPlugin(private val project: Project) {
     }
 
     // A report of unused annotation processors
-    val declaredProcsTask =
-      dependencyAnalyzer.registerFindDeclaredProcsTask(inMemoryCacheProvider, locateDependencies)
+    val declaredProcsTask = dependencyAnalyzer.registerFindDeclaredProcsTask(inMemoryCacheProvider, locateDependencies)
     val unusedProcsTask = dependencyAnalyzer.registerFindUnusedProcsTask(declaredProcsTask, importFinderTask)
 
     // A report of whether kotlin-kapt is redundant

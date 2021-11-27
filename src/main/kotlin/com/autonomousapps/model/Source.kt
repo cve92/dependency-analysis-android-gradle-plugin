@@ -10,12 +10,10 @@ sealed class Source(
 ) : Comparable<Source> {
 
   override fun compareTo(other: Source): Int = when (this) {
-    is RawCodeSource -> if (other !is RawCodeSource) 1 else defaultCompareTo(other)
     is AndroidResSource -> if (other !is AndroidResSource) -1 else defaultCompareTo(other)
-    is BytecodeSource -> {
+    is CodeSource -> {
       when (other) {
-        is RawCodeSource -> -1
-        !is BytecodeSource -> 1
+        !is CodeSource -> 1
         else -> defaultCompareTo(other)
       }
     }
@@ -24,27 +22,10 @@ sealed class Source(
   private fun defaultCompareTo(other: Source): Int = relativePath.compareTo(other.relativePath)
 }
 
-/** A single source file (e.g., `.java`, `.kt`) in this project. */
-@TypeLabel("raw_code")
-@JsonClass(generateAdapter = false)
-data class RawCodeSource(
-  override val relativePath: String,
-  /** E.g., `com/example/Foo.java` */
-  val className: String,
-  val kind: Kind,
-  val imports: Set<String>
-) : Source(relativePath) {
-
-  enum class Kind {
-    JAVA,
-    KOTLIN,
-  }
-}
-
 /** A single `.class` file in this project. */
 @TypeLabel("bytecode")
 @JsonClass(generateAdapter = false)
-data class BytecodeSource(
+data class CodeSource(
   override val relativePath: String,
   val className: String,
   /** Every class discovered in the bytecode of [className]. */
@@ -59,7 +40,9 @@ data class BytecodeSource(
 data class AndroidResSource(
   override val relativePath: String,
   val styleParentRefs: Set<StyleParentRef>,
-  val attrRefs: Set<AttrRef>
+  val attrRefs: Set<AttrRef>,
+  /** Layout files have class references. */
+  val usedClasses: Set<String>
 ) : Source(relativePath) {
 
   /** The parent of a style resource, e.g. "Theme.AppCompat.Light.DarkActionBar". */
