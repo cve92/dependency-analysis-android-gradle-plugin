@@ -7,6 +7,7 @@ import com.autonomousapps.internal.ManifestParser
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.mapNotNullToOrderedSet
 import com.autonomousapps.internal.utils.toJson
+import com.autonomousapps.model.AndroidManifestCapability.Component
 import com.autonomousapps.model.intermediates.AndroidManifestDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -46,7 +47,7 @@ abstract class ManifestComponentsExtractionTask : DefaultTask() {
         val parseResult = parser.parse(manifest.file, true)
         AndroidManifestDependency(
           packageName = parseResult.packageName,
-          componentMap = parseResult.components,
+          componentMap = parseResult.components.toComponentMap(),
           componentIdentifier = manifest.id.componentIdentifier
         )
       } catch (_: GradleException) {
@@ -55,6 +56,12 @@ abstract class ManifestComponentsExtractionTask : DefaultTask() {
     }
 
     outputFile.writeText(manifests.toJson())
+  }
+
+  private fun Map<String, Set<String>>.toComponentMap(): Map<Component, Set<String>> {
+    return map { (key, values) ->
+      Component.of(key) to values
+    }.toMap()
   }
 }
 

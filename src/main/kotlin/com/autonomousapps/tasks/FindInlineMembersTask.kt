@@ -6,8 +6,9 @@ import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.KotlinMetadataVisitor
 import com.autonomousapps.internal.asm.ClassReader
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.intermediates.InlineMemberDependency
+import com.autonomousapps.model.InlineMemberCapability
 import com.autonomousapps.model.PhysicalArtifact
+import com.autonomousapps.model.intermediates.InlineMemberDependency
 import com.autonomousapps.services.InMemoryCache
 import kotlinx.metadata.Flag
 import kotlinx.metadata.KmDeclarationContainer
@@ -109,16 +110,27 @@ internal class InlineMembersFinder(
   fun find(): Set<InlineMemberDependency> = artifacts.filter {
     it.file.name.endsWith(".jar")
   }.map { artifact ->
-    artifact to findInlineMembers(ZipFile(artifact.file)).toSortedSet()
+    artifact to findInlineMembers(ZipFile(artifact.file))
   }.filterNot { (_, inlineMembers) ->
     inlineMembers.isEmpty()
   }.mapToOrderedSet { (artifact, inlineMembers) ->
     InlineMemberDependency(artifact.coordinates, inlineMembers)
   }
 
-  private fun findInlineMembers(zipFile: ZipFile): Set<String> {
-    val alreadyFoundInlineMembers: Set<String>? =
-      inMemoryCache.inlineMember(zipFile.name)?.toSet() // TODO cache should return set
+  /**
+   * Returns either an empty set, if there are no inline members, or a set of [InlineMemberCapability.InlineMember]s
+   * (import candidates). E.g.:
+   * ```
+   * [
+   *   "kotlin.jdk7.*",
+   *   "kotlin.jdk7.use"
+   * ]
+   * ```
+   * An import statement with either of those would import the `kotlin.jdk7.use()` inline function, contributed by the
+   * "org.jetbrains.kotlin:kotlin-stdlib-jdk7" module.
+   */
+  private fun findInlineMembers(zipFile: ZipFile): Set<InlineMemberCapability.InlineMember> {
+    val alreadyFoundInlineMembers = inMemoryCache.inlineMember2(zipFile.name)
     if (alreadyFoundInlineMembers != null) {
       return alreadyFoundInlineMembers
     }
@@ -130,7 +142,7 @@ internal class InlineMembersFinder(
     }
 
     return entries.asSequenceOfClassFiles()
-      .flatMap { entry ->
+      .mapNotNull { entry ->
         // TODO an entry with `META-INF/proguard/androidx-annotations.pro`
         val classReader = zipFile.getInputStream(entry).use { ClassReader(it.readBytes()) }
         val metadataVisitor = KotlinMetadataVisitor(logger)
@@ -160,10 +172,25 @@ internal class InlineMembersFinder(
           }
         } ?: emptySet()
 
-        // return
-        inlineMembers
-      }.toSet().also {
-        inMemoryCache.inlineMembers(zipFile.name, it.toList())
+        // return early if no members found
+        if (inlineMembers.isEmpty()) return@mapNotNull null
+
+        val pn = if (entry.name.contains('/')) {
+          // entry is in a package
+          entry.name.substringBeforeLast('/').replace('/', '.')
+        } else {
+          // entry is in root; no package
+          ""
+        }
+
+        // return non-empty members
+        InlineMemberCapability.InlineMember(
+          packageName = pn,
+          // Guaranteed to be non-empty
+          inlineMembers = inlineMembers
+        )
+      }.toSortedSet().also {
+        inMemoryCache.inlineMembers2(zipFile.name, it)
       }
   }
 

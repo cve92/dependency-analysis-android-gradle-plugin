@@ -25,6 +25,7 @@ internal class OutputPaths(private val project: Project, variantName: String) {
   val importsPath = file("${intermediatesDir}/imports.json")
   val inlineUsagePath = file("${intermediatesDir}/inline-usage.json")
   val constantUsagePath = file("${intermediatesDir}/constant-usage.json")
+  val androidResPath = file("${intermediatesDir}/android-re.json")
   val androidResToSourceUsagePath = file("${intermediatesDir}/android-res-by-source-usage.json")
   val androidResToResUsagePath = file("${intermediatesDir}/android-res-by-res-usage.json")
   val generalUsagePath = file("${intermediatesDir}/general-usage.json")
@@ -51,7 +52,7 @@ internal class OutputPaths(private val project: Project, variantName: String) {
   val explodingBytecodePath = file("${intermediatesDir}/exploding-bytecode.json")
   val syntheticProject = file("${intermediatesDir}/synthetic-project.json")
   /** Separate from advice.json because I might map to that temporarily */
-  val computedAdvice = file("${variantDirectory}/computed-advice.json")
+  val computedAdvicePath = file("${variantDirectory}/computed-advice.json")
 
   /*
    * Graph-related tasks

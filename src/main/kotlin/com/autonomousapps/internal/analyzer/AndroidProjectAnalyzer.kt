@@ -120,17 +120,13 @@ internal abstract class AndroidAnalyzer(
     }
   }
 
-  override fun registerFindAndroidResTask(): TaskProvider<FindAndroidResImportsTask> {
-    return project.tasks.register<FindAndroidResImportsTask>(
-      "findAndroidResImports$variantNameCapitalized"
-    ) {
+  override fun registerFindAndroidResTask(): TaskProvider<FindAndroidResTask> {
+    return project.tasks.register<FindAndroidResTask>("findAndroidResImports$variantNameCapitalized") {
       setAndroidSymbols(
-        // For AGP 3.5.x, this does not return any module dependencies
         project.configurations[compileConfigurationName].artifactsFor("android-symbol-with-package-name")
       )
       setAndroidPublicRes(project.configurations[compileConfigurationName].artifactsFor("android-public-res"))
-
-      output.set(outputPaths.androidResToSourceUsagePath)
+      output.set(outputPaths.androidResPath)
     }
   }
 

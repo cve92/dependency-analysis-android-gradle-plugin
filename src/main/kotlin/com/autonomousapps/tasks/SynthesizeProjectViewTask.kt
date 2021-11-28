@@ -127,6 +127,8 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
         source.className,
         CodeSourceBuilder(source.className).apply {
           imports.addAll(source.imports)
+          kind = source.kind
+          relativePath = source.relativePath
         },
         CodeSourceBuilder::concat
       )
@@ -155,6 +157,7 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
 private class CodeSourceBuilder(val className: String) {
 
   var relativePath: String? = null
+  var kind: CodeSource.Kind = CodeSource.Kind.UNKNOWN
   val usedClasses = mutableSetOf<String>()
   val exposedClasses = mutableSetOf<String>()
   val imports = mutableSetOf<String>()
@@ -164,16 +167,19 @@ private class CodeSourceBuilder(val className: String) {
     exposedClasses.addAll(other.exposedClasses)
     imports.addAll(other.imports)
     other.relativePath?.let { relativePath = it }
+    kind = other.kind
     return this
   }
 
   fun build(): CodeSource {
-    val relativePath = checkNotNull(relativePath) { "'relativePath' must not be null" }
+    val relativePath = checkNotNull(relativePath) { "'relativePath' was null for $className" }
     return CodeSource(
       relativePath = relativePath,
+      kind = kind,
       className = className,
       usedClasses = usedClasses,
-      exposedClasses = exposedClasses
+      exposedClasses = exposedClasses,
+      imports = imports
     )
   }
 }

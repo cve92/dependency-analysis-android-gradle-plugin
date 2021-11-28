@@ -7,7 +7,8 @@ import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.mapNotNullToSet
 import com.autonomousapps.internal.utils.toCoordinates
 import com.autonomousapps.internal.utils.toJson
-import com.autonomousapps.model.intermediates.AndroidRes
+import com.autonomousapps.model.AndroidResCapability
+import com.autonomousapps.model.intermediates.AndroidResDependency
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ArtifactCollection
@@ -21,7 +22,7 @@ import java.io.File
  * classpath. These are not necessarily used.
  */
 @CacheableTask
-abstract class FindAndroidResImportsTask : DefaultTask() {
+abstract class FindAndroidResTask : DefaultTask() {
 
   init {
     group = TASK_GROUP_DEP_INTERNAL
@@ -62,19 +63,20 @@ abstract class FindAndroidResImportsTask : DefaultTask() {
   fun action() {
     val outputFile = output.getAndDelete()
 
-    val androidRes: Set<AndroidRes> = (androidResFrom(androidSymbols) + androidResFrom(androidPublicRes)).toSortedSet()
+    val androidRes: Set<AndroidResDependency> =
+      (androidResFrom(androidSymbols) + androidResFrom(androidPublicRes)).toSortedSet()
 
     outputFile.writeText(androidRes.toJson())
   }
 
-  private fun androidResFrom(artifacts: ArtifactCollection): Set<AndroidRes> {
+  private fun androidResFrom(artifacts: ArtifactCollection): Set<AndroidResDependency> {
     return artifacts.mapNotNullToSet { resArtifact ->
       try {
         // TODO this could be more efficient. It opens the file twice
         val import = extractResImportFromResFile(resArtifact.file)
         val lines = extractLinesFromRes(resArtifact.file)
         if (import != null) {
-          AndroidRes(
+          AndroidResDependency(
             coordinates = resArtifact.id.componentIdentifier.toCoordinates(),
             import = import,
             lines = lines
@@ -93,15 +95,15 @@ abstract class FindAndroidResImportsTask : DefaultTask() {
     return "$pn.R"
   }
 
-  private fun extractLinesFromRes(producerRes: File): List<AndroidRes.Line> {
-    return producerRes.useLines { strings ->
-      strings
+  private fun extractLinesFromRes(producerRes: File): List<AndroidResCapability.Line> {
+    return producerRes.useLines { lines ->
+      lines
         .mapNotNull { line ->
           // First line of file is the package. Every subsequent line is two elements delimited by a space. The first
           // element is the res type (such as "drawable") and the second element is the ID (filename).
           val split = line.split(' ')
           if (split.size == 2) {
-            AndroidRes.Line(split[0], split[1])
+            AndroidResCapability.Line(split[0], split[1])
           } else {
             null
           }

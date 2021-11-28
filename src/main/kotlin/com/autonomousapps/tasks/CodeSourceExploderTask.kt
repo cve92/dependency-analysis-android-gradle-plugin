@@ -9,8 +9,8 @@ import com.autonomousapps.internal.grammar.SimpleLexer
 import com.autonomousapps.internal.grammar.SimpleParser
 import com.autonomousapps.internal.utils.getAndDelete
 import com.autonomousapps.internal.utils.toJson
+import com.autonomousapps.model.CodeSource.Kind
 import com.autonomousapps.model.intermediates.ExplodingSourceCode
-import com.autonomousapps.model.intermediates.ExplodingSourceCode.Kind
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty

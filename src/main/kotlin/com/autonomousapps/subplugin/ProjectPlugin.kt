@@ -541,12 +541,12 @@ internal class ProjectPlugin(private val project: Project) {
 
     // TODO "misused dependencies"
     // TODO advice
-    val computeAdviceTask = tasks.register<ComputeAdviceTask>("computeAdvice$variantTaskName") {
+    val computeAdviceTask = tasks.register<ComputeAdviceTask>("computeDependencyUsage$variantTaskName") {
       graph.set(graphViewTask.flatMap { it.output })
       locations.set(locatorTask.flatMap { it.output })
       dependencies.set(synthesizeDependenciesTask.flatMap { it.outputDir })
       syntheticProject.set(synthesizeProjectViewTask.flatMap { it.output })
-      output.set(outputPaths.computedAdvice)
+      output.set(outputPaths.computedAdvicePath)
     }
 
   }
@@ -675,9 +675,7 @@ internal class ProjectPlugin(private val project: Project) {
     // A report of service loaders
     val serviceLoaderTask = tasks.register<FindServiceLoadersTask>("serviceLoader$variantTaskName") {
       artifacts = configurations[dependencyAnalyzer.compileConfigurationName]
-        .incoming
-        .artifactViewFor(dependencyAnalyzer.attributeValueJar)
-        .artifacts
+        .artifactsFor(dependencyAnalyzer.attributeValueJar)
       locations.set(locateDependencies.flatMap { it.output })
       output.set(outputPaths.serviceLoaderDependenciesPath)
     }

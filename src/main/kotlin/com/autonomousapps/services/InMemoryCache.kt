@@ -5,6 +5,7 @@ package com.autonomousapps.services
 import com.autonomousapps.FLAG_MAX_CACHE_SIZE
 import com.autonomousapps.internal.AnalyzedJar
 import com.autonomousapps.internal.AnnotationProcessor
+import com.autonomousapps.model.InlineMemberCapability
 import com.autonomousapps.model.intermediates.AnnotationProcessorDependency
 import com.autonomousapps.model.intermediates.ExplodingJar
 import com.github.benmanes.caffeine.cache.Cache
@@ -54,6 +55,7 @@ abstract class InMemoryCache : BuildService<BuildServiceParameters.None> {
   private val explodingJars: Cache<String, ExplodingJar> = newCache()
   private val constantMembers: Cache<String, Set<String>> = newCache()
   private val inlineMembers: Cache<String, List<String>> = newCache()
+  private val inlineMembers2: Cache<String, Set<InlineMemberCapability.InlineMember>> = newCache()
   private val procs: Cache<String, AnnotationProcessor> = newCache()
   private val procs2: Cache<String, AnnotationProcessorDependency> = newCache()
 
@@ -74,10 +76,16 @@ abstract class InMemoryCache : BuildService<BuildServiceParameters.None> {
     constantMembers.asMap().putIfAbsent(identifier, constants)
   }
 
-  fun inlineMember(name: String): List<String>? = inlineMembers.asMap()[name]
+  internal fun inlineMember(name: String): List<String>? = inlineMembers.asMap()[name]
 
-  fun inlineMembers(name: String, members: List<String>) {
+  internal fun inlineMembers(name: String, members: List<String>) {
     inlineMembers.asMap().putIfAbsent(name, members)
+  }
+
+  internal fun inlineMember2(name: String): Set<InlineMemberCapability.InlineMember>? = inlineMembers2.asMap()[name]
+
+  internal fun inlineMembers2(name: String, members: Set<InlineMemberCapability.InlineMember>) {
+    inlineMembers2.asMap().putIfAbsent(name, members)
   }
 
   fun proc(procName: String): AnnotationProcessor? = procs.asMap()[procName]

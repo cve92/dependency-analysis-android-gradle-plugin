@@ -12,9 +12,6 @@ sealed class Dependency(
 ) : Comparable<Dependency> {
   override fun compareTo(other: Dependency): Int = coordinates.compareTo(other.coordinates)
 
-  // @Suppress("UNCHECKED_CAST")
-  // fun <T : Capability> capabilityOf(type: Class<T>): T? = capabilities[type.canonicalName] as T?
-
   inline fun <reified T : Capability> capabilityOf(): T? = capabilities[T::class.java.canonicalName] as T?
 }
 

@@ -119,7 +119,7 @@ abstract class SynthesizeDependenciesWorkAction : WorkAction<SynthesizeDependenc
     val annotationProcessors = parameters.annotationProcessors.fromJsonSet<AnnotationProcessorDependency>()
     // Android-specific and therefore optional
     val manifestComponents = parameters.manifestComponents.fromNullableJsonSet<AndroidManifestDependency>().orEmpty()
-    val androidRes = parameters.androidRes.fromNullableJsonSet<AndroidRes>().orEmpty()
+    val androidRes = parameters.androidRes.fromNullableJsonSet<AndroidResDependency>().orEmpty()
     val nativeLibs = parameters.nativeLibs.fromNullableJsonSet<NativeLibDependency>().orEmpty()
 
     physicalArtifacts.forEach { artifact ->

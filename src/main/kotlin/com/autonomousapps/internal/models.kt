@@ -9,6 +9,7 @@ import com.autonomousapps.internal.Location.Companion.findMatch
 import com.autonomousapps.internal.advice.ComputedAdvice
 import com.autonomousapps.internal.asm.Opcodes
 import com.autonomousapps.internal.utils.*
+import com.autonomousapps.model.KtFile
 import org.gradle.api.artifacts.component.ComponentIdentifier
 import java.io.File
 import java.io.Serializable

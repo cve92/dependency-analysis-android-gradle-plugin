@@ -1,6 +1,5 @@
 package com.autonomousapps.model.intermediates
 
-import com.autonomousapps.internal.KtFile
 import com.autonomousapps.internal.utils.ifNotEmpty
 import com.autonomousapps.internal.utils.toCoordinates
 import com.autonomousapps.model.*
@@ -36,12 +35,12 @@ internal data class AndroidManifestDependency(
   /** The package name per `<manifest package="...">`. */
   val packageName: String,
   /** A map of component type to components. */
-  val componentMap: Map<String, Set<String>>
+  val componentMap: Map<AndroidManifestCapability.Component, Set<String>>
 ) : DependencyView<AndroidManifestDependency> {
 
   constructor(
     packageName: String,
-    componentMap: Map<String, Set<String>>,
+    componentMap: Map<AndroidManifestCapability.Component, Set<String>>,
     componentIdentifier: ComponentIdentifier
   ) : this(
     packageName = packageName,
@@ -50,35 +49,16 @@ internal data class AndroidManifestDependency(
   )
 
   override fun toCapabilities(): List<Capability> = listOf(AndroidManifestCapability(packageName, componentMap))
-
-  enum class Component(val tagName: String, val mapKey: String) {
-    ACTIVITY("activity", "activities"),
-    SERVICE("service", "services"),
-    RECEIVER("receiver", "receivers"),
-    PROVIDER("provider", "providers");
-
-    val attrName = "android:name"
-
-    companion object {
-      internal fun of(mapKey: String): Component {
-        return values().find {
-          it.mapKey == mapKey
-        } ?: error("Could not find Manifest.Component for $mapKey")
-      }
-    }
-  }
 }
 
-data class AndroidRes(
+internal data class AndroidResDependency(
   override val coordinates: Coordinates,
   /** An import that indicates a possible use of an Android resource from this dependency. */
   val import: String,
-  val lines: List<Line>
-) : DependencyView<AndroidRes> {
+  val lines: List<AndroidResCapability.Line>
+) : DependencyView<AndroidResDependency> {
 
   override fun toCapabilities(): List<Capability> = listOf(AndroidResCapability(import, lines))
-
-  data class Line(val type: String, val value: String)
 }
 
 internal data class AnnotationProcessorDependency(
@@ -103,7 +83,7 @@ internal data class AnnotationProcessorDependency(
 
 internal data class InlineMemberDependency(
   override val coordinates: Coordinates,
-  val inlineMembers: Set<String>
+  val inlineMembers: Set<InlineMemberCapability.InlineMember>
 ) : DependencyView<InlineMemberDependency> {
 
   override fun toCapabilities(): List<Capability> = listOf(InlineMemberCapability(inlineMembers))
@@ -175,7 +155,7 @@ internal data class ExplodedJar(
   /**
    * All of the "Kt" files within this component.
    */
-  val ktFiles: List<KtFile>
+  val ktFiles: Set<KtFile>
 ) : DependencyView<ExplodedJar> {
 
   internal constructor(
@@ -202,8 +182,7 @@ internal data class ExplodedJar(
     val capabilities = mutableListOf<Capability>()
     capabilities += InferredCapability(isCompileOnlyAnnotations = isCompileOnlyAnnotations)
     classes.ifNotEmpty { capabilities += ClassCapability(it) }
-    constantFields.ifNotEmpty { capabilities += ConstantCapability(it) }
-    ktFiles.ifNotEmpty { capabilities += KtFileCapability(it) }
+    constantFields.ifNotEmpty { capabilities += ConstantCapability(it, ktFiles) }
     securityProviders.ifNotEmpty { capabilities += SecurityProviderCapability(it) }
     androidLintRegistry?.let { capabilities += AndroidLinterCapability(it, isLintJar) }
     return capabilities

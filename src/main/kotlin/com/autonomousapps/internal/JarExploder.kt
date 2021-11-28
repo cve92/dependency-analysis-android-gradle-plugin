@@ -4,6 +4,7 @@ import com.autonomousapps.internal.asm.ClassReader
 import com.autonomousapps.internal.utils.asClassFiles
 import com.autonomousapps.internal.utils.getLogger
 import com.autonomousapps.internal.utils.mapToOrderedSet
+import com.autonomousapps.model.KtFile
 import com.autonomousapps.model.intermediates.AndroidLinterDependency
 import com.autonomousapps.model.intermediates.ExplodedJar
 import com.autonomousapps.model.intermediates.ExplodingJar
@@ -52,7 +53,7 @@ internal class JarExploder(
 
     inMemoryCache.updateJars(zip.name)
 
-    val ktFiles = KtFile.fromZip(zip)
+    val ktFiles = KtFile.fromZip(zip).toSet()
     val analyzedClasses = zip.asClassFiles()
       .map { classEntry ->
         ClassNameAndAnnotationsVisitor(logger).apply {

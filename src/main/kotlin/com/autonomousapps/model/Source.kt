@@ -23,16 +23,27 @@ sealed class Source(
 }
 
 /** A single `.class` file in this project. */
-@TypeLabel("bytecode")
+@TypeLabel("code")
 @JsonClass(generateAdapter = false)
 data class CodeSource(
   override val relativePath: String,
+  val kind: Kind,
   val className: String,
   /** Every class discovered in the bytecode of [className]. */
   val usedClasses: Set<String>,
   /** Every class discovered in the bytecode of [className], and which is exposed as part of the ABI. */
-  val exposedClasses: Set<String>
-) : Source(relativePath)
+  val exposedClasses: Set<String>,
+  /** Every import in this source file. */
+  val imports: Set<String>
+) : Source(relativePath) {
+
+  enum class Kind {
+    JAVA,
+    KOTLIN,
+    /** Probably generated source. */
+    UNKNOWN,
+  }
+}
 
 /** A single `.xml` (Android resource) file in this project. */
 @TypeLabel("android_res")

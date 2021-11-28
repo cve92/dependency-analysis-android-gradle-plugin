@@ -1,7 +1,5 @@
 package com.autonomousapps.model
 
-import com.autonomousapps.internal.KtFile
-import com.autonomousapps.model.intermediates.AndroidRes
 import com.squareup.moshi.JsonClass
 import dev.zacsweers.moshix.sealed.annotations.TypeLabel
 
@@ -22,15 +20,36 @@ data class AndroidLinterCapability(
 @JsonClass(generateAdapter = false)
 data class AndroidManifestCapability(
   val packageName: String,
-  val componentMap: Map<String, Set<String>>
-) : Capability()
+  val componentMap: Map<Component, Set<String>>
+) : Capability() {
+
+  enum class Component(val tagName: String, val mapKey: String) {
+    ACTIVITY("activity", "activities"),
+    SERVICE("service", "services"),
+    RECEIVER("receiver", "receivers"),
+    PROVIDER("provider", "providers");
+
+    val attrName = "android:name"
+
+    companion object {
+      internal fun of(mapKey: String): Component {
+        return values().find {
+          it.mapKey == mapKey
+        } ?: error("Could not find Manifest.Component for $mapKey")
+      }
+    }
+  }
+}
 
 @TypeLabel("res")
 @JsonClass(generateAdapter = false)
 data class AndroidResCapability(
   val rImport: String,
-  val lines: List<AndroidRes.Line>
-) : Capability()
+  val lines: List<Line>
+) : Capability() {
+
+  data class Line(val type: String, val value: String)
+}
 
 @TypeLabel("proc")
 @JsonClass(generateAdapter = false)
@@ -48,7 +67,10 @@ data class ClassCapability(
 @TypeLabel("const")
 @JsonClass(generateAdapter = false)
 data class ConstantCapability(
-  val constants: Map<String, Set<String>>
+  /** Map of fully-qualified class names to constant field names. */
+  val constants: Map<String, Set<String>>,
+  /** Kotlin classes with top-level declarations. */
+  val ktFiles: Set<KtFile>
 ) : Capability()
 
 @TypeLabel("inferred")
@@ -64,15 +86,16 @@ data class InferredCapability(
 @TypeLabel("inline")
 @JsonClass(generateAdapter = false)
 data class InlineMemberCapability(
-  val inlineMembers: Set<String>
-) : Capability()
+  val inlineMembers: Set<InlineMember>
+) : Capability() {
 
-// TODO not sure about this
-@TypeLabel("kt_file")
-@JsonClass(generateAdapter = false)
-data class KtFileCapability(
-  val ktFiles: List<KtFile>
-) : Capability()
+  data class InlineMember(
+    val packageName: String,
+    val inlineMembers: Set<String>
+  ) : Comparable<InlineMember> {
+    override fun compareTo(other: InlineMember): Int = packageName.compareTo(other.packageName)
+  }
+}
 
 @TypeLabel("native")
 @JsonClass(generateAdapter = false)

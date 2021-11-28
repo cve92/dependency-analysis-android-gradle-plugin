@@ -2,6 +2,7 @@ package com.autonomousapps.internal
 
 import com.autonomousapps.internal.utils.mapToOrderedSet
 import com.autonomousapps.internal.utils.reallyAll
+import com.autonomousapps.model.KtFile
 import java.lang.annotation.RetentionPolicy
 
 /**
