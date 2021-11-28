@@ -136,12 +136,13 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
       .map { it.build() }
       .toSet()
 
-    val coordinates = ProjectCoordinates(parameters.projectPath.get())
+    val projectCoordinates = ProjectCoordinates(parameters.projectPath.get())
     val classpath = graph.graph.nodes().asSequence().filterNot {
-      it == coordinates
+      it == projectCoordinates
     }.toSortedSet()
 
     val projectVariant = ProjectVariant(
+      coordinates = projectCoordinates,
       variant = parameters.variant.get(),
       sources = (codeSource + androidResSource).toSortedSet(),
       classpath = classpath

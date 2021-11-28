@@ -4,10 +4,7 @@ import com.autonomousapps.TASK_GROUP_DEP
 import com.autonomousapps.internal.utils.fromJson
 import com.autonomousapps.internal.utils.fromJsonSet
 import com.autonomousapps.internal.utils.getAndDelete
-import com.autonomousapps.model.Coordinates
-import com.autonomousapps.model.Dependency
-import com.autonomousapps.model.DependencyGraphView
-import com.autonomousapps.model.ProjectVariant
+import com.autonomousapps.model.*
 import com.autonomousapps.model.intermediates.Location
 import com.autonomousapps.visitor.GraphViewReader
 import com.autonomousapps.visitor.GraphViewVisitor
@@ -92,35 +89,37 @@ abstract class ComputeAdviceWorkAction : WorkAction<ComputeAdviceParameters> {
     val visitor = GraphVisitor()
     reader.accept(visitor)
 
-    // dependencies
-    //   .filterIsDeclared()
-    //   .forEach { dependency ->
-    //     dependency.capabilityOf(ClassCapability::class.java)?.classes?.forEach { dependencyClass ->
-    //       if (project.usedClasses.any { it == dependencyClass }) {
-    //
-    //       }
-    //     }
-    //   }
-  }
 
-  // private fun Set<Dependency>.filterIsDeclared(): Set<Dependency> {
-  //   return filterToSet { dependency ->
-  //     locations.any { location ->
-  //       dependency.coordinates.identifier == location.identifier
-  //     }
-  //   }
-  // }
+  }
 
   private fun getDependency(coordinates: Coordinates): Dependency {
     return dependenciesDir.file(coordinates.toFileName()).fromJson()
   }
 }
 
-private class GraphVisitor(
+private class GraphVisitor : GraphViewVisitor {
 
-) : GraphViewVisitor {
+  val abiDependencies = mutableSetOf<Dependency>()
+  val implDependencies = mutableSetOf<Dependency>()
 
   override fun visit(dependency: Dependency, context: GraphViewVisitor.Context) {
-    TODO()
+    if (isApi(dependency, context)) {
+      abiDependencies.add(dependency)
+    }
+    if (isImplementation(dependency, context)) {
+      implDependencies.add(dependency)
+    }
+  }
+
+  private fun isApi(dependency: Dependency, context: GraphViewVisitor.Context): Boolean {
+    return context.project.exposedClasses.any { exposedClass ->
+      dependency.capabilityOf<ClassCapability>()?.classes.orEmpty().contains(exposedClass)
+    }
+  }
+
+  private fun isImplementation(dependency: Dependency, context: GraphViewVisitor.Context): Boolean {
+    return context.project.implementationClasses.any { implClass ->
+      dependency.capabilityOf<ClassCapability>()?.classes.orEmpty().contains(implClass)
+    }
   }
 }

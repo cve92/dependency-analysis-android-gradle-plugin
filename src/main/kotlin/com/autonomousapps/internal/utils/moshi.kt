@@ -101,7 +101,7 @@ inline fun <reified K, reified V> Map<K, V>.toPrettyString(withNulls: Boolean = 
   return getJsonMapAdapter<K, V>(withNulls).indent("  ").toJson(this)
 }
 
-@Suppress("unused")
+@Suppress("unused", "UNCHECKED_CAST")
 internal class TypeAdapters {
 
   @ToJson fun fileToJson(file: File): String = file.absolutePath
