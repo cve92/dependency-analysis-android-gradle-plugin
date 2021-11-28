@@ -381,6 +381,7 @@ internal class ProjectPlugin(private val project: Project) {
    * set, or Java source set.
    */
   private fun Project.analyzeDependencies2(dependencyAnalyzer: DependencyAnalyzer) {
+    val thisProjectPath = path
     val variantName = dependencyAnalyzer.variantName
     val variantTaskName = dependencyAnalyzer.variantNameCapitalized
     val outputPaths = OutputPaths(this, variantName)
@@ -522,6 +523,7 @@ internal class ProjectPlugin(private val project: Project) {
 
     // Synthesizes the above into a single view of this project's usages.
     val synthesizeProjectViewTask = tasks.register<SynthesizeProjectViewTask>("synthesizeProjectView$variantTaskName") {
+      projectPath.set(thisProjectPath)
       variant.set(variantName)
       graph.set(graphViewTask.flatMap { it.output })
       explodedBytecode.set(explodeBytecodeTask.flatMap { it.output })
@@ -539,7 +541,13 @@ internal class ProjectPlugin(private val project: Project) {
 
     // TODO "misused dependencies"
     // TODO advice
-
+    val computeAdviceTask = tasks.register<ComputeAdviceTask>("computeAdvice$variantTaskName") {
+      graph.set(graphViewTask.flatMap { it.output })
+      locations.set(locatorTask.flatMap { it.output })
+      dependencies.set(synthesizeDependenciesTask.flatMap { it.outputDir })
+      syntheticProject.set(synthesizeProjectViewTask.flatMap { it.output })
+      output.set(outputPaths.computedAdvice)
+    }
 
   }
 
@@ -776,7 +784,6 @@ internal class ProjectPlugin(private val project: Project) {
     val adviceTask = tasks.register<AdvicePerVariantTask>("generateAdvice$variantTaskName") {
       finalizedBy(advicePrinterTask)
 
-      inMemoryCacheProvider.set(this@ProjectPlugin.inMemoryCacheProvider)
       allComponentsReport.set(analyzeJarTask.flatMap { it.allComponentsReport })
       allComponentsWithTransitives.set(misusedDependenciesTask.flatMap { it.outputAllComponents })
       unusedDependenciesReport.set(misusedDependenciesTask.flatMap { it.outputUnusedComponents })

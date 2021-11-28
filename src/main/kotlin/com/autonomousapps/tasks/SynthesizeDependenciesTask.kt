@@ -169,7 +169,7 @@ private class DependencyBuilder(val coordinates: Coordinates) {
 
   fun build(): Dependency {
     val file = checkNotNull(file) { "'file' must not be null" }
-    val capabilities = capabilities.sorted()
+    val capabilities: Map<Class<out Capability>, Capability> = capabilities.associateBy { it.javaClass }
 
     return when (coordinates) {
       is ProjectCoordinates -> ProjectDependency(coordinates, capabilities, file)

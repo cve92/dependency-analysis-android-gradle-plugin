@@ -6,13 +6,13 @@ import com.autonomousapps.extension.Behavior
 import com.autonomousapps.extension.Fail
 
 internal class SeverityHandler(
-    private val anyBehavior: Behavior,
-    private val unusedDependenciesBehavior: Behavior,
-    private val usedTransitiveDependenciesBehavior: Behavior,
-    private val incorrectConfigurationBehavior: Behavior,
-    private val compileOnlyBehavior: Behavior,
-    private val unusedProcsBehavior: Behavior,
-    private val redundantPluginsBehavior: Behavior
+  private val anyBehavior: Behavior,
+  private val unusedDependenciesBehavior: Behavior,
+  private val usedTransitiveDependenciesBehavior: Behavior,
+  private val incorrectConfigurationBehavior: Behavior,
+  private val compileOnlyBehavior: Behavior,
+  private val unusedProcsBehavior: Behavior,
+  private val redundantPluginsBehavior: Behavior
 ) {
   fun shouldFailDeps(advice: Set<Advice>): Boolean {
     return anyBehavior.isFail() && advice.isNotEmpty() ||

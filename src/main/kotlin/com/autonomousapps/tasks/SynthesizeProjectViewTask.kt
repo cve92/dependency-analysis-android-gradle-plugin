@@ -2,10 +2,7 @@ package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.utils.*
-import com.autonomousapps.model.AndroidResSource
-import com.autonomousapps.model.CodeSource
-import com.autonomousapps.model.DependencyGraphView
-import com.autonomousapps.model.ProjectVariant
+import com.autonomousapps.model.*
 import com.autonomousapps.model.intermediates.ExplodingAbi
 import com.autonomousapps.model.intermediates.ExplodingBytecode
 import com.autonomousapps.model.intermediates.ExplodingSourceCode
@@ -27,6 +24,9 @@ abstract class SynthesizeProjectViewTask @Inject constructor(
     group = TASK_GROUP_DEP_INTERNAL
     description = "Synthesizes project usages information into a single view"
   }
+
+  @get:Input
+  abstract val projectPath: Property<String>
 
   @get:Input
   abstract val variant: Property<String>
@@ -63,6 +63,7 @@ abstract class SynthesizeProjectViewTask @Inject constructor(
 
   @TaskAction fun action() {
     workerExecutor.noIsolation().submit(SynthesizeProjectViewWorkAction::class.java) {
+      projectPath.set(this@SynthesizeProjectViewTask.projectPath)
       variant.set(this@SynthesizeProjectViewTask.variant)
       graph.set(this@SynthesizeProjectViewTask.graph)
       explodedBytecode.set(this@SynthesizeProjectViewTask.explodedBytecode)
@@ -75,6 +76,7 @@ abstract class SynthesizeProjectViewTask @Inject constructor(
 }
 
 interface SynthesizeProjectViewParameters : WorkParameters {
+  val projectPath: Property<String>
   val variant: Property<String>
   val graph: RegularFileProperty
   val explodedBytecode: RegularFileProperty
@@ -91,6 +93,7 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
 
   private val builders = sortedMapOf<String, CodeSourceBuilder>()
 
+  @Suppress("UnstableApiUsage") // Guava Graph
   override fun execute() {
     val output = parameters.output.getAndDelete()
 
@@ -133,11 +136,15 @@ abstract class SynthesizeProjectViewWorkAction : WorkAction<SynthesizeProjectVie
       .map { it.build() }
       .toSet()
 
-    @Suppress("UnstableApiUsage") // Guava Graph
+    val coordinates = ProjectCoordinates(parameters.projectPath.get())
+    val classpath = graph.graph.nodes().asSequence().filterNot {
+      it == coordinates
+    }.toSortedSet()
+
     val projectVariant = ProjectVariant(
       variant = parameters.variant.get(),
-      sources = (codeSource + androidResSource).toList(),
-      classpath = graph.graph.nodes()
+      sources = (codeSource + androidResSource).toSortedSet(),
+      classpath = classpath
     )
 
     output.writeText(projectVariant.toJson())
