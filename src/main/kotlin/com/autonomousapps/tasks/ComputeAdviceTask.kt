@@ -1,6 +1,7 @@
 package com.autonomousapps.tasks
 
 import com.autonomousapps.TASK_GROUP_DEP
+import com.autonomousapps.internal.unsafeLazy
 import com.autonomousapps.internal.utils.*
 import com.autonomousapps.model.*
 import com.autonomousapps.model.intermediates.Location
@@ -45,7 +46,7 @@ abstract class ComputeAdviceTask @Inject constructor(
   abstract val output: RegularFileProperty
 
   @TaskAction fun action() {
-    workerExecutor.noIsolation().submit(ComputeDependencyUsageWorkAction::class.java) {
+    workerExecutor.noIsolation().submit(ComputeAdviceAction::class.java) {
       graph.set(this@ComputeAdviceTask.graph)
       locations.set(this@ComputeAdviceTask.locations)
       dependencies.set(this@ComputeAdviceTask.dependencies)
@@ -55,7 +56,7 @@ abstract class ComputeAdviceTask @Inject constructor(
   }
 }
 
-interface ComputeDependencyUsageParameters : WorkParameters {
+interface ComputeAdviceParameters : WorkParameters {
   val graph: RegularFileProperty
   val locations: RegularFileProperty
   val dependencies: DirectoryProperty
@@ -63,7 +64,7 @@ interface ComputeDependencyUsageParameters : WorkParameters {
   val output: RegularFileProperty
 }
 
-abstract class ComputeDependencyUsageWorkAction : WorkAction<ComputeDependencyUsageParameters> {
+abstract class ComputeAdviceAction : WorkAction<ComputeAdviceParameters> {
 
   private val dependenciesDir = parameters.dependencies.get()
   private val graph = parameters.graph.fromJson<DependencyGraphView>()
@@ -138,9 +139,7 @@ private class GraphVisitor(
     dependency.capabilities.values.forEach { capability ->
       @Suppress("UNUSED_VARIABLE") // exhaustive when
       val ignored: Any = when (capability) {
-        is AndroidLinterCapability -> {
-          isLintJar = capability.isLintJar
-        }
+        is AndroidLinterCapability -> isLintJar = capability.isLintJar
         is AndroidManifestCapability -> {
           val components = capability.componentMap
           val services = components[AndroidManifestCapability.Component.SERVICE]
@@ -166,7 +165,7 @@ private class GraphVisitor(
               val byStyleParentRef = candidate.styleParentRefs.any { styleParentRef ->
                 id == styleParentRef.styleParent
               }
-              val byAttrRef by lazy {
+              val byAttrRef by unsafeLazy {
                 candidate.attrRefs.any { attrRef ->
                   type == attrRef.type && id == attrRef.id
                 }
@@ -209,9 +208,7 @@ private class GraphVisitor(
             candidateImports.contains(it)
           }
         }
-        is InferredCapability -> {
-          isCompileOnly = capability.isCompileOnlyAnnotations
-        }
+        is InferredCapability -> isCompileOnly = capability.isCompileOnlyAnnotations
         is InlineMemberCapability -> {
           val candidateImports = capability.inlineMembers.asSequence()
             .flatMap { (pn, names) ->
@@ -222,15 +219,9 @@ private class GraphVisitor(
             candidateImports.contains(it)
           }
         }
-        is ServiceLoaderCapability -> {
-          hasServiceLoader = capability.providerClasses.isNotEmpty()
-        }
-        is NativeLibCapability -> {
-          hasNativeLib = capability.fileNames.isNotEmpty()
-        }
-        is SecurityProviderCapability -> {
-          hasSecurityProvider = capability.securityProviders.isNotEmpty()
-        }
+        is ServiceLoaderCapability -> hasServiceLoader = capability.providerClasses.isNotEmpty()
+        is NativeLibCapability -> hasNativeLib = capability.fileNames.isNotEmpty()
+        is SecurityProviderCapability -> hasSecurityProvider = capability.securityProviders.isNotEmpty()
       }
     }
 
