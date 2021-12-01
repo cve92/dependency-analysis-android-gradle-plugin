@@ -73,7 +73,11 @@ internal class ProjectPlugin(private val project: Project) {
    */
   private val configuredForJavaProject = AtomicBoolean(false)
 
+  // v2
   private lateinit var locatorTask: TaskProvider<LocateDependenciesTask2>
+  private lateinit var mergeAdviceTask: TaskProvider<MergeAdviceTask>
+
+  // v1
   private lateinit var aggregateAdviceTask: TaskProvider<AdviceSubprojectAggregationTask>
   private lateinit var aggregateGraphTask: TaskProvider<DependencyGraphAllVariants>
   private lateinit var aggregateReasonTask: TaskProvider<ReasonAggregationTask>
@@ -376,6 +380,11 @@ internal class ProjectPlugin(private val project: Project) {
     analyzeDependencies2(dependencyAnalyzer)
   }
 
+  private fun Project.addAggregationTasks() {
+    // addAggregationTasks1()
+    addAggregationTasks2()
+  }
+
   /**
    * Subproject tasks are registered here. This function is called in a loop, once for each Android variant & source
    * set, or Java source set.
@@ -549,6 +558,19 @@ internal class ProjectPlugin(private val project: Project) {
       output.set(outputPaths.computedAdvicePath)
     }
 
+    mergeAdviceTask.configure {
+      dependencyUsageReports.add(computeAdviceTask.flatMap { it.output })
+    }
+  }
+
+  private fun Project.addAggregationTasks2() {
+    val paths = NoVariantOutputPaths(this)
+
+    mergeAdviceTask.configure {
+      onlyIf { dependencyUsageReports.get().isNotEmpty() }
+      locations.set(locatorTask.flatMap { it.output })
+      output.set(paths.mergedAdvicePath)
+    }
   }
 
   /**
@@ -877,7 +899,7 @@ internal class ProjectPlugin(private val project: Project) {
   /**
    * This adds an aggregator task at the project level to collect all the variant-specific advice.
    */
-  private fun Project.addAggregationTasks() {
+  private fun Project.addAggregationTasks1() {
     val paths = NoVariantOutputPaths(this)
 
     // Produces a report that coalesces all the variant-specific dependency advice, as well as the
@@ -890,7 +912,7 @@ internal class ProjectPlugin(private val project: Project) {
       }
 
       with(getExtension().issueHandler) {
-        val path = this@addAggregationTasks.path
+        val path = this@addAggregationTasks1.path
         anyBehavior.set(anyIssueFor(path))
         unusedDependenciesBehavior.set(unusedDependenciesIssueFor(path))
         usedTransitiveDependenciesBehavior.set(usedTransitiveDependenciesIssueFor(path))

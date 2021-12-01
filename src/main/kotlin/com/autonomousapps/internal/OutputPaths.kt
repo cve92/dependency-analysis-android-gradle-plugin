@@ -84,6 +84,10 @@ internal class NoVariantOutputPaths(private val project: Project) {
    * Advice-related tasks.
    */
 
+  // v2
+  val mergedAdvicePath = file("$ROOT_DIR/merged-advice.json")
+
+  // v1
   val aggregateAdvicePath = file("$ROOT_DIR/advice-all-variants.json")
   val aggregateAdvicePrettyPath = file("$ROOT_DIR/advice-all-variants-pretty.json")
 

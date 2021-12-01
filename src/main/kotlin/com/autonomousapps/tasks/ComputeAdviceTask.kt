@@ -1,9 +1,10 @@
 package com.autonomousapps.tasks
 
-import com.autonomousapps.TASK_GROUP_DEP
+import com.autonomousapps.TASK_GROUP_DEP_INTERNAL
 import com.autonomousapps.internal.unsafeLazy
 import com.autonomousapps.internal.utils.*
 import com.autonomousapps.model.*
+import com.autonomousapps.model.intermediates.DependencyUsageReport
 import com.autonomousapps.model.intermediates.Location
 import com.autonomousapps.visitor.GraphViewReader
 import com.autonomousapps.visitor.GraphViewVisitor
@@ -22,7 +23,7 @@ abstract class ComputeAdviceTask @Inject constructor(
 ) : DefaultTask() {
 
   init {
-    group = TASK_GROUP_DEP
+    group = TASK_GROUP_DEP_INTERNAL
     description = "Computes actual dependency usage"
   }
 
@@ -84,7 +85,7 @@ abstract class ComputeAdviceAction : WorkAction<ComputeAdviceParameters> {
       graph = graph,
       locations = locations
     )
-    val visitor = GraphVisitor(locations)
+    val visitor = GraphVisitor(project.variant)
     reader.accept(visitor)
 
     output.writeText(visitor.getReport().toJson())
@@ -95,35 +96,32 @@ abstract class ComputeAdviceAction : WorkAction<ComputeAdviceParameters> {
   }
 }
 
-internal data class DependencyUsageReport(
-  val abiDependencies: Set<Coordinates>,
-  val implDependencies: Set<Coordinates>,
-  val compileOnlyDependencies: Set<Coordinates>,
-  val unusedDependencies: Set<Coordinates>
-)
-
-private class GraphVisitor(
-  private val locations: Set<Location>
-) : GraphViewVisitor {
+private class GraphVisitor(private val variant: String) : GraphViewVisitor {
 
   fun getReport() = DependencyUsageReport(
-    abiDependencies = abiDependencies.mapToOrderedSet { it.coordinates },
+    variant = variant,
+    abiDependencies = apiDependencies.mapToOrderedSet { it.coordinates },
     implDependencies = implDependencies.mapToOrderedSet { it.coordinates },
     compileOnlyDependencies = compileOnlyDependencies.mapToOrderedSet { it.coordinates },
-    unusedDependencies = unusedDependencies.mapToOrderedSet { it.coordinates }
+    runtimeOnlyDependencies = runtimeOnlyDependencies.mapToOrderedSet { it.coordinates },
+    compileOnlyApiDependencies = compileOnlyApiDependencies.mapToOrderedSet { it.coordinates },
   )
 
-  private val abiDependencies = mutableSetOf<Dependency>()
+  /*
+   * App projects don't have APIs. This is handled upstream by ensuring app projects don't attempt ABI analysis.
+   * Test variants also don't have APIs. This is not yet handled at all. (Love comments destined to be out of date.)
+   */
+
+  private val apiDependencies = mutableSetOf<Dependency>()
   private val implDependencies = mutableSetOf<Dependency>()
   private val compileOnlyDependencies = mutableSetOf<Dependency>()
-  private val unusedDependencies = mutableSetOf<Dependency>()
+  private val runtimeOnlyDependencies = mutableSetOf<Dependency>()
+  private val compileOnlyApiDependencies = mutableSetOf<Dependency>()
 
-  // TODO resByRes usages should probably be considered ABI?
   override fun visit(dependency: Dependency, context: GraphViewVisitor.Context) {
     var isUnusedCandidate = false
     var isLintJar = false
     var isCompileOnly = false
-    var isAndroid = false
     var isRuntimeAndroid = false
     var usesResBySource = false
     var usesResByRes = false
@@ -133,54 +131,21 @@ private class GraphVisitor(
     var hasSecurityProvider = false
     var hasNativeLib = false
 
-    fun isRuntime() = isLintJar || isRuntimeAndroid || usesResBySource || usesResByRes || usesConstant
-      || usesInlineMember || hasServiceLoader || hasSecurityProvider || hasNativeLib
-
     dependency.capabilities.values.forEach { capability ->
       @Suppress("UNUSED_VARIABLE") // exhaustive when
       val ignored: Any = when (capability) {
         is AndroidLinterCapability -> isLintJar = capability.isLintJar
-        is AndroidManifestCapability -> {
-          val components = capability.componentMap
-          val services = components[AndroidManifestCapability.Component.SERVICE]
-          val providers = components[AndroidManifestCapability.Component.PROVIDER]
-          val activities = components[AndroidManifestCapability.Component.ACTIVITY]
-          val receivers = components[AndroidManifestCapability.Component.RECEIVER]
-          // If we considered any component to be sufficient, then we'd be super over-aggressive regarding whether an
-          // Android library was used.
-          isRuntimeAndroid = services != null || providers != null
-          // Nevertheless, it is interesting to track whether a dependency is an Android library for other reasons.
-          isAndroid = isRuntimeAndroid || activities != null || receivers != null
-        }
+        is AndroidManifestCapability -> isRuntimeAndroid = isRuntimeAndroid(capability)
         is AndroidResCapability -> {
-          // by source
-          val projectImports = context.project.imports
-          usesResBySource = listOf(capability.rImport, capability.rImport.removeSuffix("R") + "*").any {
-            projectImports.contains(it)
-          }
-
-          // by res
-          usesResByRes = capability.lines.any { (type, id) ->
-            context.project.androidResSource.any { candidate ->
-              val byStyleParentRef = candidate.styleParentRefs.any { styleParentRef ->
-                id == styleParentRef.styleParent
-              }
-              val byAttrRef by unsafeLazy {
-                candidate.attrRefs.any { attrRef ->
-                  type == attrRef.type && id == attrRef.id
-                }
-              }
-
-              byStyleParentRef || byAttrRef
-            }
-          }
+          usesResBySource = usesResBySource(capability, context)
+          usesResByRes = usesResByRes(capability, context)
         }
         is AnnotationProcessorCapability -> {
           // TODO haven't re-implemented annotation processing yet
         }
         is ClassCapability -> {
           if (isAbi(capability, context)) {
-            abiDependencies.add(dependency)
+            apiDependencies.add(dependency)
           } else if (isImplementation(capability, context)) {
             implDependencies.add(dependency)
           } else if (isImported(capability, context)) {
@@ -189,36 +154,9 @@ private class GraphVisitor(
             isUnusedCandidate = true
           }
         }
-        is ConstantCapability -> {
-          val ktFiles = capability.ktFiles
-          val candidateImports = capability.constants.asSequence()
-            .flatMap { (fqcn, names) ->
-              val ktPrefix = ktFiles.find {
-                it.fqcn == fqcn
-              }?.name?.let { name ->
-                fqcn.removeSuffix(name)
-              }
-              val ktImports = names.mapNotNull { name -> ktPrefix?.let { "$it$name" } }
-
-              ktImports + listOf("$fqcn.*") + names.map { name -> "$fqcn.$name" }
-            }
-            .toSet()
-
-          usesConstant = context.project.imports.any {
-            candidateImports.contains(it)
-          }
-        }
+        is ConstantCapability -> usesConstant = usesConstant(capability, context)
         is InferredCapability -> isCompileOnly = capability.isCompileOnlyAnnotations
-        is InlineMemberCapability -> {
-          val candidateImports = capability.inlineMembers.asSequence()
-            .flatMap { (pn, names) ->
-              listOf("$pn.*") + names.map { name -> "$pn.$name" }
-            }
-            .toSet()
-          usesInlineMember = context.project.imports.any {
-            candidateImports.contains(it)
-          }
-        }
+        is InlineMemberCapability -> usesInlineMember = usesInlineMember(capability, context)
         is ServiceLoaderCapability -> hasServiceLoader = capability.providerClasses.isNotEmpty()
         is NativeLibCapability -> hasNativeLib = capability.fileNames.isNotEmpty()
         is SecurityProviderCapability -> hasSecurityProvider = capability.securityProviders.isNotEmpty()
@@ -227,20 +165,46 @@ private class GraphVisitor(
 
     if (isCompileOnly && !isUnusedCandidate) {
       compileOnlyDependencies.add(dependency)
-      abiDependencies.remove(dependency)
+      apiDependencies.remove(dependency) // TODO compileOnlyApi?
       implDependencies.remove(dependency)
     }
 
     if (isUnusedCandidate) {
-      if (isRuntime()) {
-        // Not safe to declare unused as it has (undetectable) runtime elements
+      // These weren't detected by direct presence in bytecode, but via source analysis. We can say less about them, so
+      // we dump them into `implementation` to be conservative.
+      if (usesResBySource) {
         implDependencies.add(dependency)
-      } else {
-        if (locations.any { it.identifier == dependency.coordinates.identifier }) {
-          unusedDependencies.add(dependency)
-        }
+      } else if (usesResByRes) {
+        // TODO resByRes usages should probably be considered ABI?
+        implDependencies.add(dependency)
+      } else if (usesConstant) {
+        implDependencies.add(dependency)
+      } else if (usesInlineMember) {
+        implDependencies.add(dependency)
+      }
+
+      // Not safe to declare unused as it has (undetectable) runtime elements
+      if (isLintJar) {
+        runtimeOnlyDependencies.add(dependency)
+      } else if (isRuntimeAndroid) {
+        runtimeOnlyDependencies.add(dependency)
+      } else if (hasServiceLoader) {
+        runtimeOnlyDependencies.add(dependency)
+      } else if (hasSecurityProvider) {
+        runtimeOnlyDependencies.add(dependency)
+      } else if (hasNativeLib) {
+        runtimeOnlyDependencies.add(dependency)
       }
     }
+  }
+
+  private fun isRuntimeAndroid(capability: AndroidManifestCapability): Boolean {
+    val components = capability.componentMap
+    val services = components[AndroidManifestCapability.Component.SERVICE]
+    val providers = components[AndroidManifestCapability.Component.PROVIDER]
+    // If we considered any component to be sufficient, then we'd be super over-aggressive regarding whether an Android
+    // library was used.
+    return services != null || providers != null
   }
 
   private fun isAbi(classCapability: ClassCapability, context: GraphViewVisitor.Context): Boolean {
@@ -258,6 +222,61 @@ private class GraphVisitor(
   private fun isImported(classCapability: ClassCapability, context: GraphViewVisitor.Context): Boolean {
     return context.project.imports.any { import ->
       classCapability.classes.contains(import)
+    }
+  }
+
+  private fun usesConstant(capability: ConstantCapability, context: GraphViewVisitor.Context): Boolean {
+    val ktFiles = capability.ktFiles
+    val candidateImports = capability.constants.asSequence()
+      .flatMap { (fqcn, names) ->
+        val ktPrefix = ktFiles.find {
+          it.fqcn == fqcn
+        }?.name?.let { name ->
+          fqcn.removeSuffix(name)
+        }
+        val ktImports = names.mapNotNull { name -> ktPrefix?.let { "$it$name" } }
+
+        ktImports + listOf("$fqcn.*") + names.map { name -> "$fqcn.$name" }
+      }
+      .toSet()
+
+    return context.project.imports.any {
+      candidateImports.contains(it)
+    }
+  }
+
+  private fun usesResBySource(capability: AndroidResCapability, context: GraphViewVisitor.Context): Boolean {
+    val projectImports = context.project.imports
+    return listOf(capability.rImport, capability.rImport.removeSuffix("R") + "*").any {
+      projectImports.contains(it)
+    }
+  }
+
+  private fun usesResByRes(capability: AndroidResCapability, context: GraphViewVisitor.Context): Boolean {
+    return capability.lines.any { (type, id) ->
+      context.project.androidResSource.any { candidate ->
+        val byStyleParentRef = candidate.styleParentRefs.any { styleParentRef ->
+          id == styleParentRef.styleParent
+        }
+        val byAttrRef by unsafeLazy {
+          candidate.attrRefs.any { attrRef ->
+            type == attrRef.type && id == attrRef.id
+          }
+        }
+
+        byStyleParentRef || byAttrRef
+      }
+    }
+  }
+
+  private fun usesInlineMember(capability: InlineMemberCapability, context: GraphViewVisitor.Context): Boolean {
+    val candidateImports = capability.inlineMembers.asSequence()
+      .flatMap { (pn, names) ->
+        listOf("$pn.*") + names.map { name -> "$pn.$name" }
+      }
+      .toSet()
+    return context.project.imports.any {
+      candidateImports.contains(it)
     }
   }
 }
