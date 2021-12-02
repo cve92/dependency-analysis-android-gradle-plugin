@@ -5,6 +5,8 @@ import com.autonomousapps.internal.unsafeLazy
 import com.autonomousapps.internal.utils.*
 import com.autonomousapps.model.*
 import com.autonomousapps.model.intermediates.DependencyUsageReport
+import com.autonomousapps.model.intermediates.DependencyUsageReport.Reason
+import com.autonomousapps.model.intermediates.DependencyUsageReport.Trace
 import com.autonomousapps.model.intermediates.Location
 import com.autonomousapps.visitor.GraphViewReader
 import com.autonomousapps.visitor.GraphViewVisitor
@@ -100,11 +102,11 @@ private class GraphVisitor(private val variant: String) : GraphViewVisitor {
 
   fun getReport() = DependencyUsageReport(
     variant = variant,
-    abiDependencies = apiDependencies.mapToOrderedSet { it.coordinates },
-    implDependencies = implDependencies.mapToOrderedSet { it.coordinates },
-    compileOnlyDependencies = compileOnlyDependencies.mapToOrderedSet { it.coordinates },
-    runtimeOnlyDependencies = runtimeOnlyDependencies.mapToOrderedSet { it.coordinates },
-    compileOnlyApiDependencies = compileOnlyApiDependencies.mapToOrderedSet { it.coordinates },
+    abiDependencies = apiDependencies.toTraces(),
+    implDependencies = implDependencies.toTraces(),
+    compileOnlyDependencies = compileOnlyDependencies.toTraces(),
+    runtimeOnlyDependencies = runtimeOnlyDependencies.toTraces(),
+    compileOnlyApiDependencies = compileOnlyApiDependencies.toTraces(),
   )
 
   /*
@@ -112,11 +114,11 @@ private class GraphVisitor(private val variant: String) : GraphViewVisitor {
    * Test variants also don't have APIs. This is not yet handled at all. (Love comments destined to be out of date.)
    */
 
-  private val apiDependencies = mutableSetOf<Dependency>()
-  private val implDependencies = mutableSetOf<Dependency>()
-  private val compileOnlyDependencies = mutableSetOf<Dependency>()
-  private val runtimeOnlyDependencies = mutableSetOf<Dependency>()
-  private val compileOnlyApiDependencies = mutableSetOf<Dependency>()
+  private val apiDependencies = mutableMapOf<Coordinates, MutableSet<Reason>>()
+  private val implDependencies = mutableMapOf<Coordinates, MutableSet<Reason>>()
+  private val compileOnlyDependencies = mutableMapOf<Coordinates, MutableSet<Reason>>()
+  private val runtimeOnlyDependencies = mutableMapOf<Coordinates, MutableSet<Reason>>()
+  private val compileOnlyApiDependencies = mutableMapOf<Coordinates, MutableSet<Reason>>()
 
   override fun visit(dependency: Dependency, context: GraphViewVisitor.Context) {
     var isUnusedCandidate = false
@@ -145,11 +147,11 @@ private class GraphVisitor(private val variant: String) : GraphViewVisitor {
         }
         is ClassCapability -> {
           if (isAbi(capability, context)) {
-            apiDependencies.add(dependency)
+            apiDependencies.add(dependency.coordinates, Reason.ABI)
           } else if (isImplementation(capability, context)) {
-            implDependencies.add(dependency)
+            implDependencies.add(dependency.coordinates, Reason.IMPL)
           } else if (isImported(capability, context)) {
-            implDependencies.add(dependency)
+            implDependencies.add(dependency.coordinates, Reason.IMPORTED)
           } else {
             isUnusedCandidate = true
           }
@@ -164,37 +166,52 @@ private class GraphVisitor(private val variant: String) : GraphViewVisitor {
     }
 
     if (isCompileOnly && !isUnusedCandidate) {
-      compileOnlyDependencies.add(dependency)
-      apiDependencies.remove(dependency) // TODO compileOnlyApi?
-      implDependencies.remove(dependency)
+      compileOnlyDependencies.add(dependency.coordinates, Reason.COMPILE_ONLY)
+      apiDependencies.remove(dependency.coordinates) // TODO compileOnlyApi?
+      implDependencies.remove(dependency.coordinates)
     }
 
     if (isUnusedCandidate) {
       // These weren't detected by direct presence in bytecode, but via source analysis. We can say less about them, so
       // we dump them into `implementation` to be conservative.
       if (usesResBySource) {
-        implDependencies.add(dependency)
+        implDependencies.add(dependency.coordinates, Reason.RES_BY_SRC)
       } else if (usesResByRes) {
         // TODO resByRes usages should probably be considered ABI?
-        implDependencies.add(dependency)
+        implDependencies.add(dependency.coordinates, Reason.RES_BY_RES)
       } else if (usesConstant) {
-        implDependencies.add(dependency)
+        implDependencies.add(dependency.coordinates, Reason.CONSTANT)
       } else if (usesInlineMember) {
-        implDependencies.add(dependency)
+        implDependencies.add(dependency.coordinates, Reason.INLINE)
       }
 
       // Not safe to declare unused as it has (undetectable) runtime elements
       if (isLintJar) {
-        runtimeOnlyDependencies.add(dependency)
+        runtimeOnlyDependencies.add(dependency.coordinates, Reason.LINT_JAR)
       } else if (isRuntimeAndroid) {
-        runtimeOnlyDependencies.add(dependency)
+        runtimeOnlyDependencies.add(dependency.coordinates, Reason.RUNTIME_ANDROID)
       } else if (hasServiceLoader) {
-        runtimeOnlyDependencies.add(dependency)
+        runtimeOnlyDependencies.add(dependency.coordinates, Reason.SERVICE_LOADER)
       } else if (hasSecurityProvider) {
-        runtimeOnlyDependencies.add(dependency)
+        runtimeOnlyDependencies.add(dependency.coordinates, Reason.SECURITY_PROVIDER)
       } else if (hasNativeLib) {
-        runtimeOnlyDependencies.add(dependency)
+        runtimeOnlyDependencies.add(dependency.coordinates, Reason.NATIVE_LIB)
       }
+    }
+  }
+
+  private fun MutableMap<Coordinates, MutableSet<Reason>>.toTraces(): Set<Trace> {
+    return mapToOrderedSet { (coord, reasons) ->
+      Trace(coord, reasons)
+    }
+  }
+
+  private fun MutableMap<Coordinates, MutableSet<Reason>>.add(coordinates: Coordinates, reason: Reason) {
+    merge(
+      coordinates,
+      mutableSetOf(reason)
+    ) { acc, inc ->
+      acc.apply { addAll(inc) }
     }
   }
 

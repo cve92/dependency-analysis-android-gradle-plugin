@@ -94,6 +94,7 @@ internal class ProjectPlugin(private val project: Project) {
         outputPaths = outputPaths
       )
     }
+    mergeAdviceTask = tasks.register<MergeAdviceTask>("mergeAdvice")
     aggregateAdviceTask = tasks.register<AdviceSubprojectAggregationTask>("aggregateAdvice")
     aggregateGraphTask = tasks.register<DependencyGraphAllVariants>("graph")
     aggregateReasonTask = tasks.register<ReasonAggregationTask>("reason")
