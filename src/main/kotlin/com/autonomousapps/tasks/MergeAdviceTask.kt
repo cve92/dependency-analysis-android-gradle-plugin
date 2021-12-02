@@ -65,10 +65,17 @@ abstract class MergeAdviceAction : WorkAction<MergeAdviceParameters> {
     val reports = parameters.dependencyUsageReports.get()
       .mapToSet { it.fromJson<DependencyUsageReport>() }
 
+    // Treat this as the full set of variants in this project. I.e., if it's an Android project, which is multi-variant
+    // by default, it may have a variant filter such that only one variant is configured -- fine, that's the ONLY
+    // variant there is, as far as we're concerned here. It is synonymous with "main."
+    // We will eventually have test variants, and they will have to be treated specially, as they have a different set
+    // of dependency buckets available when compared to non-test variants.
+    val variants = reports.mapToSet { it.variant }
+
     val usages = UsageBuilder(reports).usages
     val advice = sortedSetOf<Advice>()
 
-    
+
 
     // reports.forEach { report ->
     //   report.abiDependencies.forEach { abiDependency ->

@@ -1,8 +1,23 @@
 package com.autonomousapps.graph
 
+import com.autonomousapps.model.intermediates.ConfigurationGraph
 import org.gradle.kotlin.dsl.support.appendReproducibleNewLine
 
 internal object GraphWriter {
+
+  @Suppress("UnstableApiUsage") // Guava graph
+  fun toDot(graph: ConfigurationGraph) = buildString {
+    appendReproducibleNewLine("strict digraph DependencyGraph {")
+    appendReproducibleNewLine("  ratio=0.6;")
+    appendReproducibleNewLine("  node [shape=box];")
+
+    graph.graph.edges().forEach { edge ->
+      val source = edge.source()
+      val target = edge.target()
+      appendReproducibleNewLine("  \"$source\" -> \"$target\";")
+    }
+    append("}")
+  }
 
   fun toDot(graph: DependencyGraph) = buildString {
     val projectNodes = graph.nodes().filter {

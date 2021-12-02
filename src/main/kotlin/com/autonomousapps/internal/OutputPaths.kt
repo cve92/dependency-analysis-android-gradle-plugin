@@ -79,6 +79,8 @@ internal class OutputPaths(private val project: Project, variantName: String) {
 internal class NoVariantOutputPaths(private val project: Project) {
 
   val locationsPath = file("$ROOT_DIR/locations.json")
+  val dependencyBucketPath = file("$ROOT_DIR/dependency-bucket-graph.json")
+  val dependencyBucketDotPath = file("$ROOT_DIR/dependency-bucket-graph.gv")
 
   /*
    * Advice-related tasks.

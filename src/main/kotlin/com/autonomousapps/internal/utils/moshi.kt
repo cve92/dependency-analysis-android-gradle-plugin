@@ -4,6 +4,8 @@ package com.autonomousapps.internal.utils
 
 import com.autonomousapps.model.Coordinates
 import com.autonomousapps.model.DependencyGraphView
+import com.autonomousapps.model.intermediates.ConfigurationGraph
+import com.autonomousapps.tasks.SerializableConfigurationGraph
 import com.google.common.graph.Graph
 import com.squareup.moshi.FromJson
 import com.squareup.moshi.JsonAdapter
@@ -18,6 +20,7 @@ val MOSHI: Moshi by lazy {
   Moshi.Builder()
     .add(DependencyGraphAdapter())
     .add(GraphViewAdapter())
+    .add(ConfigurationGraphAdapter())
     .add(MetadataMoshiSealedJsonAdapterFactory())
     .add(TypeAdapters())
     .addLast(KotlinJsonAdapterFactory())
@@ -106,6 +109,17 @@ internal class TypeAdapters {
 
   @ToJson fun fileToJson(file: File): String = file.absolutePath
   @FromJson fun fileFromJson(absolutePath: String): File = File(absolutePath)
+}
+
+internal class ConfigurationGraphAdapter {
+
+  @ToJson fun graphToJson(graph: ConfigurationGraph): SerializableConfigurationGraph {
+    return SerializableConfigurationGraph.of(graph)
+  }
+
+  @FromJson fun jsonToGraph(json: SerializableConfigurationGraph): ConfigurationGraph {
+    return ConfigurationGraph.of(json)
+  }
 }
 
 @Suppress("unused", "UnstableApiUsage")

@@ -109,6 +109,7 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter-api") {
     because("For running tests on the JUnit5 Jupiter platform")
   }
+  testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.1")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine") {
     because("Baeldung said so")
   }
